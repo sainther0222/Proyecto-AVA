@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imagen Interactiva — El Punto</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg: #1A1816;
+            --fg: #F0EAE0;
+            --muted: #7A7068;
+            --accent: #B91C1C;
+            --card: #FFFBF5;
+            --border: #D6CFC5;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            overflow: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 30%, rgba(185,28,28,0.04) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        h2 { font-family: 'Playfair Display', serif; }
+        .frame-wrapper { animation: wrapperIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        @keyframes wrapperIn {
+            from { opacity: 0; transform: translateY(24px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .mode-tabs { display: flex; gap: 0; position: relative; z-index: 2; }
+        .mode-tab {
+            padding: 11px 26px;
+            background: rgba(255,251,245,0.04);
+            border: 1px solid rgba(255,251,245,0.07);
+            border-bottom: none;
+            border-radius: 10px 10px 0 0;
+            color: var(--muted);
+            font-family: 'Source Sans 3', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.35s ease;
+            letter-spacing: 0.02em;
+        }
+        .mode-tab:hover { color: var(--fg); background: rgba(255,251,245,0.08); }
+        .mode-tab.active { background: var(--card); color: var(--accent); border-color: rgba(214,207,197,0.5); }
+        .mode-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .mode-tab i { margin-right: 6px; font-size: 0.75rem; }
+        .frame {
+            width: 740px; height: 460px;
+            background: var(--card);
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.25), 0 16px 48px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.5);
+            overflow: hidden;
+            position: relative;
+        }
+        .frame canvas { display: block; width: 100%; height: 100%; }
+        .side-panel {
+            position: absolute; left: 14px; top: 50%;
+            transform: translateY(-50%) translateX(-130%);
+            display: flex; flex-direction: column; gap: 6px;
+            transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+        }
+        .side-panel.visible { transform: translateY(-50%) translateX(0); }
+        .shape-btn {
+            width: 42px; height: 42px; border-radius: 10px;
+            border: 2px solid var(--border);
+            background: rgba(255,251,245,0.93);
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.25s ease;
+            position: relative;
+        }
+        .shape-btn:hover { border-color: var(--accent); transform: scale(1.1); box-shadow: 0 2px 10px rgba(185,28,28,0.12); }
+        .shape-btn.active { background: var(--accent); border-color: var(--accent); box-shadow: 0 2px 12px rgba(185,28,28,0.25); }
+        .shape-btn.active svg { stroke: white; }
+        .shape-btn svg { stroke: var(--muted); stroke-width: 2.2; fill: none; transition: stroke 0.2s; }
+        .shape-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .shape-btn .tip {
+            position: absolute; left: 50px; white-space: nowrap;
+            background: rgba(28,25,23,0.88); color: white;
+            padding: 4px 10px; border-radius: 6px;
+            font-size: 0.72rem; font-weight: 600;
+            opacity: 0; pointer-events: none; transition: opacity 0.2s;
+        }
+        .shape-btn:hover .tip { opacity: 1; }
+        .caption-bar { display: flex; align-items: center; justify-content: space-between; width: 740px; padding: 10px 0 0; }
+        .caption-tag {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 0.72rem; color: var(--muted);
+            letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
+        }
+        .caption-tag .dot-indicator { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: blink 2s ease-in-out infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @media (max-width: 800px) {
+            .frame, .caption-bar { width: 100%; max-width: 740px; }
+            .frame { height: auto; aspect-ratio: 740 / 460; }
+            .mode-tab { padding: 9px 14px; font-size: 0.76rem; }
+            .mode-tab i { display: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="frame-wrapper">
+        <h2 class="text-xl font-bold mb-1 tracking-wider" style="color: var(--fg); letter-spacing: 0.1em;">IMAGEN INTERACTIVA</h2>
+        <p class="text-xs mb-5" style="color: var(--muted); letter-spacing: 0.04em;">El Punto — Concepto fundamental del diseño</p>
+
+        <div class="mode-tabs">
+            <button class="mode-tab active" data-mode="1" aria-label="Modo: El Punto"><i class="fa-solid fa-pencil"></i> El Punto</button>
+            <button class="mode-tab" data-mode="2" aria-label="Modo: Formas"><i class="fa-solid fa-shapes"></i> Formas</button>
+            <button class="mode-tab" data-mode="3" aria-label="Modo: Perspectiva"><i class="fa-solid fa-mountain-sun"></i> Perspectiva</button>
+        </div>
+
+        <div class="frame" id="frame">
+            <canvas id="c"></canvas>
+            <div class="side-panel" id="sidePanel">
+                <button class="shape-btn" data-shape="linea" aria-label="Formar línea">
+                    <svg width="18" height="18" viewBox="0 0 18 18"><line x1="2" y1="9" x2="16" y2="9" stroke-linecap="round"/></svg>
+                    <span class="tip">Línea</span>
+                </button>
+                <button class="shape-btn" data-shape="circulo" aria-label="Formar círculo">
+                    <svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7"/></svg>
+                    <span class="tip">Círculo</span>
+                </button>
+                <button class="shape-btn" data-shape="triangulo" aria-label="Formar triángulo">
+                    <svg width="18" height="18" viewBox="0 0 18 18"><polygon points="9,2 16,15 2,15" stroke-linejoin="round"/></svg>
+                    <span class="tip">Triángulo</span>
+                </button>
+                <button class="shape-btn" data-shape="cuadrado" aria-label="Formar cuadrado">
+                    <svg width="18" height="18" viewBox="0 0 18 18"><rect x="2" y="2" width="14" height="14" stroke-linejoin="round"/></svg>
+                    <span class="tip">Cuadrado</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="caption-bar">
+            <span class="caption-tag"><span class="dot-indicator"></span> Ilustración interactiva</span>
+            <span class="caption-tag" style="opacity:0.5;">Haz clic para interactuar</span>
+        </div>
+    </div>
+
+    <script>
+    const canvas = document.getElementById('c');
+    const frame  = document.getElementById('frame');
+    const sidePanel = document.getElementById('sidePanel');
+    let ctx, w, h;
+    let currentMode = 1;
+
+    function setupCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = frame.getBoundingClientRect();
+        canvas.width  = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        w = rect.width;
+        h = rect.height;
+    }
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function easeInOut(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3) / 2; }
+    function dst(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    const tabs = document.querySelectorAll('.mode-tab');
+    tabs.forEach(t => t.addEventListener('click', () => {
+        const m = +t.dataset.mode;
+        if (m === currentMode) return;
+        switchMode(m);
+    }));
+
+    function switchMode(m) {
+        currentMode = m;
+        tabs.forEach(t => t.classList.toggle('active', +t.dataset.mode === m));
+        sidePanel.classList.toggle('visible', m === 2);
+        if (m === 1) { placedDots = []; mx = w / 2; my = h / 2; canvas.style.cursor = 'none'; }
+        else if (m === 2) { initShapeDots(); activeShape = null; syncShapeBtns(); canvas.style.cursor = 'default'; }
+        else { initPersp(); canvas.style.cursor = 'pointer'; }
+    }
+
+    /* ==========================================================
+       MODO 1 — EL PUNTO
+       ========================================================== */
+    let mx = 0, my = 0, placedDots = [], pressing = false, pressT = 0;
+
+    function drawMode1(t) {
+        ctx.fillStyle = '#FFFBF5';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.strokeStyle = 'rgba(100,140,180,0.07)';
+        ctx.lineWidth = 0.8;
+        for (let y = 26; y < h; y += 26) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+        ctx.strokeStyle = 'rgba(100,140,180,0.03)';
+        for (let x = 26; x < w; x += 26) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+        ctx.strokeStyle = 'rgba(185,28,28,0.12)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(52, 0); ctx.lineTo(52, h); ctx.stroke();
+
+        for (const d of placedDots) {
+            ctx.beginPath(); ctx.arc(d.x + 0.5, d.y + 1, d.r + 1.5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(185,28,28,0.08)'; ctx.fill();
+            ctx.beginPath(); ctx.arc(d.x, d.y, Math.max(0.5, d.r), 0, Math.PI * 2);
+            ctx.fillStyle = '#B91C1C'; ctx.fill();
+        }
+
+        if (pressing) pressT = Math.min(1, pressT + 0.18);
+        else          pressT = Math.max(0, pressT - 0.12);
+
+        if (mx > -50 && my > -50) drawPencil(mx, my, t);
+
+        if (placedDots.length === 0) {
+            const a = 0.28 + Math.sin(t * 0.003) * 0.14;
+            ctx.fillStyle = `rgba(139,126,116,${a})`;
+            ctx.font = '600 13px "Source Sans 3", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Haz clic para dejar un punto', w / 2, h - 24);
+        } else {
+            ctx.fillStyle = 'rgba(139,126,116,0.28)';
+            ctx.font = '400 11px "Source Sans 3", sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(placedDots.length + (placedDots.length === 1 ? ' punto' : ' puntos'), w - 16, h - 12);
+        }
+    }
+
+    function drawPencil(tipX, tipY, t) {
+        ctx.save();
+        ctx.translate(tipX, tipY);
+
+        /* Inclinación natural de escritura */
+        const wobble = Math.sin(t * 0.0018) * 0.6;
+        ctx.rotate((25 + wobble) * Math.PI / 180);
+
+        /* Al presionar, la mina se hunde en el papel */
+        ctx.translate(0, pressT * 5);
+
+        /*
+         * Origen (0,0) = punta de la mina tocando el papel.
+         * Todo el lápiz se extiende hacia Y negativo (arriba en pantalla).
+         *
+         * Mina de grafito:    y = 0  →  y = -9   (triángulo fino)
+         * Madera (trapecio):  y = -9 →  y = -34  (se ensancha de 3px a 7px)
+         * Cuerpo amarillo:    y = -34 →  y = -116
+         * Fleje metálico:     y = -116 → y = -124
+         * Borrador:           y = -124 → y = -144
+         */
+
+        /* --- Mina de grafito: triángulo estrecho --- */
+        ctx.fillStyle = '#1A1A1A';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);          // Punta exacta
+        ctx.lineTo(-3, -9);        // Base izquierda
+        ctx.lineTo(3, -9);         // Base derecha
+        ctx.closePath();
+        ctx.fill();
+
+        /* --- Madera: TRAPECIO que se ensancha hacia el cuerpo --- */
+        const woodGrad = ctx.createLinearGradient(-7, 0, 7, 0);
+        woodGrad.addColorStop(0, '#C8A870');
+        woodGrad.addColorStop(0.35, '#E8D4A8');
+        woodGrad.addColorStop(0.65, '#F0DDB8');
+        woodGrad.addColorStop(1, '#C8A870');
+        ctx.fillStyle = woodGrad;
+        ctx.beginPath();
+        ctx.moveTo(-3, -9);        // Arriba-izquierda (pegado al grafito)
+        ctx.lineTo(3, -9);         // Arriba-derecha
+        ctx.lineTo(7, -34);        // Abajo-derecha (ancho del cuerpo)
+        ctx.lineTo(-7, -34);       // Abajo-izquierda
+        ctx.closePath();
+        ctx.fill();
+
+        /* Borde del trapecio para darle volumen */
+        ctx.strokeStyle = 'rgba(160,130,80,0.3)';
+        ctx.lineWidth = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(-3, -9);
+        ctx.lineTo(-7, -34);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(3, -9);
+        ctx.lineTo(7, -34);
+        ctx.stroke();
+
+        /* Línea donde termina la madera y empieza el cuerpo */
+        ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath(); ctx.moveTo(-7, -34); ctx.lineTo(7, -34); ctx.stroke();
+
+        /* Vet de la madera */
+        ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+        ctx.lineWidth = 0.4;
+        ctx.beginPath(); ctx.moveTo(-1, -10); ctx.lineTo(-2.5, -33); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(1.5, -11); ctx.lineTo(2, -33); ctx.stroke();
+
+        /* --- Cuerpo amarillo --- */
+        const bg = ctx.createLinearGradient(-7, 0, 7, 0);
+        bg.addColorStop(0, '#C4A42A');
+        bg.addColorStop(0.3, '#F0D060');
+        bg.addColorStop(0.6, '#F8DC6E');
+        bg.addColorStop(1, '#C4A42A');
+        ctx.fillStyle = bg;
+        ctx.fillRect(-7, -116, 14, 82);
+
+        /* Marca HB */
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        ctx.font = '700 5.5px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('HB', 0, -62);
+
+        /* --- Fleje metálico --- */
+        const fg = ctx.createLinearGradient(-8, 0, 8, 0);
+        fg.addColorStop(0, '#888888');
+        fg.addColorStop(0.4, '#BEBEBE');
+        fg.addColorStop(0.7, '#CCCCCC');
+        fg.addColorStop(1, '#888888');
+        ctx.fillStyle = fg;
+        ctx.fillRect(-8, -124, 16, 8);
+        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+        ctx.lineWidth = 0.4;
+        [-119, -116].forEach(yy => { ctx.beginPath(); ctx.moveTo(-8, yy); ctx.lineTo(8, yy); ctx.stroke(); });
+
+        /* --- Borrador --- */
+        ctx.fillStyle = '#E8A0A0';
+        ctx.beginPath();
+        ctx.moveTo(-6, -124);
+        ctx.lineTo(-6, -144);
+        ctx.quadraticCurveTo(-6, -148, -3, -148);
+        ctx.lineTo(3, -148);
+        ctx.quadraticCurveTo(6, -148, 6, -144);
+        ctx.lineTo(6, -124);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.fillRect(-4, -146, 4, 20);
+
+        ctx.restore();
+    }
+
+    /* Eventos */
+    canvas.addEventListener('mousemove', e => {
+        const r = canvas.getBoundingClientRect();
+        mx = e.clientX - r.left; my = e.clientY - r.top;
+        if (currentMode === 3) updatePerspHover(mx, my);
+    });
+    canvas.addEventListener('mouseenter', e => {
+        const r = canvas.getBoundingClientRect();
+        mx = e.clientX - r.left; my = e.clientY - r.top;
+    });
+    canvas.addEventListener('mouseleave', () => { mx = -200; my = -200; });
+    canvas.addEventListener('mousedown', () => { if (currentMode === 1) pressing = true; });
+    canvas.addEventListener('mouseup', e => {
+        if (currentMode !== 1 || !pressing) return;
+        pressing = false;
+        const r = canvas.getBoundingClientRect();
+        placedDots.push({ x: e.clientX - r.left, y: e.clientY - r.top, r: 3.5 + Math.random() * 2 });
+    });
+    canvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const r = canvas.getBoundingClientRect();
+        const tc = e.touches[0];
+        mx = tc.clientX - r.left; my = tc.clientY - r.top;
+        if (currentMode === 1) pressing = true;
+        else if (currentMode === 3) perspClick(mx, my);
+    }, { passive: false });
+    canvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const r = canvas.getBoundingClientRect();
+        mx = e.touches[0].clientX - r.left; my = e.touches[0].clientY - r.top;
+    }, { passive: false });
+    canvas.addEventListener('touchend', e => {
+        e.preventDefault();
+        if (currentMode === 1 && pressing) { pressing = false; placedDots.push({ x: mx, y: my, r: 3.5 + Math.random() * 2 }); }
+    }, { passive: false });
+
+    /* ==========================================================
+       MODO 2 — FORMAS
+       ========================================================== */
+    const N_DOTS = 70;
+    let shapeDots = [], activeShape = null, transStart = 0;
+    const TRANS_DUR = 850;
+
+    function initShapeDots() {
+        shapeDots = [];
+        for (let i = 0; i < N_DOTS; i++) {
+            shapeDots.push({
+                x: 60 + Math.random() * (w - 120), y: 30 + Math.random() * (h - 60),
+                sx: 0, sy: 0, tx: 0, ty: 0,
+                vx: (Math.random() - 0.5) * 0.7, vy: (Math.random() - 0.5) * 0.7, r: 3.8
+            });
+        }
+        activeShape = null; transStart = 0;
+    }
+
+    function shapeTargets(shape) {
+        const cx = w * 0.56, cy = h * 0.5, sz = Math.min(w * 0.32, h * 0.36);
+        if (shape === 'linea') {
+            const lw = sz * 2;
+            return Array.from({ length: N_DOTS }, (_, i) => ({ x: cx - lw / 2 + (lw / (N_DOTS - 1)) * i, y: cy }));
+        }
+        if (shape === 'circulo') {
+            return Array.from({ length: N_DOTS }, (_, i) => {
+                const a = (i / N_DOTS) * Math.PI * 2 - Math.PI / 2;
+                return { x: cx + Math.cos(a) * sz, y: cy + Math.sin(a) * sz };
+            });
+        }
+        const triH = sz * 0.866;
+        if (shape === 'triangulo') return polyPts([{ x: cx, y: cy - sz }, { x: cx + sz, y: cy + triH * 0.7 }, { x: cx - sz, y: cy + triH * 0.7 }]);
+        if (shape === 'cuadrado') {
+            const s = sz * 0.85;
+            return polyPts([{ x: cx - s, y: cy - s * 0.8 }, { x: cx + s, y: cy - s * 0.8 }, { x: cx + s, y: cy + s * 0.8 }, { x: cx - s, y: cy + s * 0.8 }]);
+        }
+        return null;
+    }
+
+    function polyPts(verts) {
+        let perim = 0;
+        const edges = verts.map((v, i) => { const n = verts[(i + 1) % verts.length]; const l = dst(v.x, v.y, n.x, n.y); perim += l; return { from: v, to: n, len: l }; });
+        const pts = [];
+        for (let i = 0; i < N_DOTS; i++) {
+            let rem = (i / N_DOTS) * perim;
+            for (const e of edges) { if (rem <= e.len + 0.01) { const tt = e.len > 0 ? rem / e.len : 0; pts.push({ x: e.from.x + (e.to.x - e.from.x) * tt, y: e.from.y + (e.to.y - e.from.y) * tt }); break; } rem -= e.len; }
+        }
+        while (pts.length < N_DOTS) pts.push({ ...verts[verts.length - 1] });
+        return pts;
+    }
+
+    function selectShape(shape) {
+        if (shape === activeShape) { activeShape = null; transStart = 0; shapeDots.forEach(d => { d.vx = (Math.random() - 0.5) * 0.9; d.vy = (Math.random() - 0.5) * 0.9; }); }
+        else { activeShape = shape; const tg = shapeTargets(shape); shapeDots.forEach((d, i) => { d.sx = d.x; d.sy = d.y; d.tx = tg[i].x; d.ty = tg[i].y; }); transStart = performance.now(); }
+        syncShapeBtns();
+    }
+
+    function syncShapeBtns() { document.querySelectorAll('.shape-btn').forEach(b => b.classList.toggle('active', b.dataset.shape === activeShape)); }
+    document.querySelectorAll('.shape-btn').forEach(b => b.addEventListener('click', () => selectShape(b.dataset.shape)));
+
+    function drawMode2(t) {
+        ctx.fillStyle = '#FFFBF5'; ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = 'rgba(0,0,0,0.03)';
+        for (let x = 24; x < w; x += 28) for (let y = 24; y < h; y += 28) { ctx.beginPath(); ctx.arc(x, y, 0.8, 0, Math.PI * 2); ctx.fill(); }
+
+        let p = 1;
+        if (transStart > 0) { p = clamp((t - transStart) / TRANS_DUR, 0, 1); p = easeInOut(p); if (p >= 1) transStart = 0; }
+        const random = !activeShape;
+
+        for (const d of shapeDots) {
+            if (random) { d.x += d.vx; d.y += d.vy; if (d.x < 20 || d.x > w - 20) d.vx *= -1; if (d.y < 20 || d.y > h - 20) d.vy *= -1; d.x = clamp(d.x, 20, w - 20); d.y = clamp(d.y, 20, h - 20); }
+            else if (transStart > 0) { d.x = lerp(d.sx, d.tx, p); d.y = lerp(d.sy, d.ty, p); }
+            else { d.x = d.tx; d.y = d.ty; }
+        }
+
+        if (!random) {
+            ctx.beginPath(); ctx.moveTo(shapeDots[0].x, shapeDots[0].y);
+            for (let i = 1; i < shapeDots.length; i++) ctx.lineTo(shapeDots[i].x, shapeDots[i].y);
+            ctx.closePath(); ctx.strokeStyle = 'rgba(185,28,28,0.1)'; ctx.lineWidth = 1; ctx.stroke();
+        }
+
+        for (const d of shapeDots) { ctx.beginPath(); ctx.arc(d.x, d.y, Math.max(0.5, d.r), 0, Math.PI * 2); ctx.fillStyle = random ? 'rgba(139,126,116,0.4)' : '#B91C1C'; ctx.fill(); }
+
+        if (!activeShape) {
+            const a = 0.28 + Math.sin(t * 0.003) * 0.14;
+            ctx.fillStyle = `rgba(139,126,116,${a})`; ctx.font = '600 13px "Source Sans 3", sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('Selecciona una forma', w * 0.56, h - 22);
+        }
+    }
+
+    /* ==========================================================
+       MODO 3 — PERSPECTIVA
+       ========================================================== */
+    let pts3 = [], selPt = null;
+
+    function initPersp() {
+        selPt = null;
+        pts3 = [
+            { x: w * 0.18, y: h * 0.6, br: 4.5, obj: 'tree',   label: 'Árbol',   zp: 0, zt: 0, hp: 0, ht: 0 },
+            { x: w * 0.50, y: h * 0.38, br: 5.5, obj: 'house',  label: 'Casa',    zp: 0, zt: 0, hp: 0, ht: 0 },
+            { x: w * 0.82, y: h * 0.55, br: 4,   obj: 'person', label: 'Persona', zp: 0, zt: 0, hp: 0, ht: 0 }
+        ];
+    }
+
+    function updatePerspHover(hmx, hmy) { for (const p of pts3) p.ht = dst(hmx, hmy, p.x, p.y) < 22 ? 1 : 0; }
+
+    function perspClick(cmx, cmy) {
+        for (const p of pts3) {
+            const cx = lerp(p.x, w * 0.5, easeInOut(clamp(p.zp * 0.8, 0, 1)));
+            const cy = lerp(p.y, h * 0.46, easeInOut(clamp(p.zp * 0.8, 0, 1)));
+            const hit = p.zp > 0.3 ? 90 : 22;
+            if (dst(cmx, cmy, cx, cy) < hit) {
+                if (selPt === p) { p.zt = 0; selPt = null; } else { if (selPt) selPt.zt = 0; selPt = p; p.zt = 1; }
+                return;
+            }
+        }
+        if (selPt) { selPt.zt = 0; selPt = null; }
+    }
+
+    canvas.addEventListener('click', e => { if (currentMode !== 3) return; const r = canvas.getBoundingClientRect(); perspClick(e.clientX - r.left, e.clientY - r.top); });
+
+    function drawMode3(t) {
+        const sky = ctx.createLinearGradient(0, 0, 0, h * 0.65);
+        sky.addColorStop(0, '#E6DCD0'); sky.addColorStop(1, '#F2EBE2');
+        ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+        const gnd = ctx.createLinearGradient(0, h * 0.58, 0, h);
+        gnd.addColorStop(0, '#C8BB9E'); gnd.addColorStop(1, '#A99A82');
+        ctx.fillStyle = gnd; ctx.beginPath();
+        ctx.moveTo(0, h * 0.64); ctx.quadraticCurveTo(w * 0.25, h * 0.59, w * 0.5, h * 0.62);
+        ctx.quadraticCurveTo(w * 0.75, h * 0.65, w, h * 0.60); ctx.lineTo(w, h); ctx.lineTo(0, h);
+        ctx.closePath(); ctx.fill();
+
+        const vpx = w * 0.5, vpy = h * 0.30;
+        ctx.save(); ctx.globalAlpha = 0.045; ctx.strokeStyle = '#7A7068'; ctx.lineWidth = 0.5;
+        for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.moveTo(vpx, vpy); ctx.lineTo((i / 8) * w, h * 0.64); ctx.stroke(); }
+        ctx.restore();
+        ctx.beginPath(); ctx.arc(vpx, vpy, 2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(122,112,104,0.25)'; ctx.fill();
+        ctx.fillStyle = 'rgba(122,112,104,0.25)'; ctx.font = '400 10px "Source Sans 3", sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('punto de fuga', vpx, vpy - 10);
+
+        const sorted = [...pts3].sort((a, b) => a.y - b.y);
+        for (const p of sorted) {
+            p.zp = lerp(p.zp, p.zt, 0.055); p.hp = lerp(p.hp, p.ht, 0.1);
+            if (p.zp < 0.04) drawDot3(p, t, selPt ? (1 - selPt.zp * 0.65) : 1);
+            else drawObj3(p, t);
+        }
+
+        if (!selPt) {
+            const a = 0.28 + Math.sin(t * 0.003) * 0.14;
+            ctx.fillStyle = `rgba(122,112,104,${a})`; ctx.font = '600 13px "Source Sans 3", sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('Selecciona un punto para descubrir el objeto', w / 2, h - 18);
+        } else {
+            ctx.fillStyle = 'rgba(122,112,104,0.3)'; ctx.font = '400 11px "Source Sans 3", sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('Haz clic de nuevo para alejar', w / 2, h - 18);
+        }
+    }
+
+    function drawDot3(p, t, ga) {
+        ctx.save(); ctx.globalAlpha = ga;
+        const pulse = 1 + Math.sin(t * 0.004 + p.x * 0.1) * 0.18;
+        const hover = 1 + p.hp * 0.45;
+        const r = Math.max(0.5, p.br * pulse * hover);
+        if (p.hp > 0.02) { ctx.beginPath(); ctx.arc(p.x, p.y, r * 3.5, 0, Math.PI * 2); ctx.fillStyle = `rgba(185,28,28,${0.07 * p.hp})`; ctx.fill(); }
+        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = '#B91C1C'; ctx.fill();
+        ctx.fillStyle = `rgba(122,112,104,${0.45 + p.hp * 0.35})`; ctx.font = '400 11px "Source Sans 3", sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(p.label, p.x, p.y + r + 15); ctx.restore();
+    }
+
+    function drawObj3(p, t) {
+        ctx.save();
+        if (p.zp > 0.25) { ctx.fillStyle = `rgba(26,24,22,${(p.zp - 0.25) * 0.3})`; ctx.fillRect(0, 0, w, h); }
+        const sc = lerp(0.25, 1, easeInOut(clamp(p.zp * 1.3, 0, 1)));
+        const al = clamp(p.zp * 2.2, 0, 1); ctx.globalAlpha = al;
+        const cx = lerp(p.x, w * 0.5, easeInOut(clamp(p.zp * 0.8, 0, 1)));
+        const cy = lerp(p.y, h * 0.44, easeInOut(clamp(p.zp * 0.8, 0, 1)));
+        if (p.obj === 'tree') drawTree(cx, cy, sc, t);
+        if (p.obj === 'house') drawHouse(cx, cy, sc, t);
+        if (p.obj === 'person') drawPerson(cx, cy, sc, t);
+        ctx.globalAlpha = al * 0.9; ctx.fillStyle = '#1A1816';
+        ctx.font = `700 ${Math.round(15 * sc)}px "Playfair Display", serif`; ctx.textAlign = 'center';
+        ctx.fillText(p.label, cx, cy + 95 * sc); ctx.restore();
+    }
+
+    function drawTree(cx, cy, s, t) {
+        ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
+        ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.beginPath(); ctx.ellipse(0, 62, 44, 10, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#5C4033'; ctx.fillRect(-7, -18, 14, 78);
+        ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.lineWidth = 0.5;
+        ctx.beginPath(); ctx.moveTo(-2, -12); ctx.lineTo(-2, 54); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(3, -8); ctx.lineTo(3, 56); ctx.stroke();
+        const sw = Math.sin(t * 0.0012) * 2;
+        ctx.fillStyle = '#2D6A4F'; ctx.beginPath(); ctx.arc(-18 + sw, -38, 27, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#357A5A'; ctx.beginPath(); ctx.arc(18 + sw, -33, 24, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#40916C'; ctx.beginPath(); ctx.arc(sw, -58, 34, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.beginPath(); ctx.arc(-4 + sw, -68, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+
+    function drawHouse(cx, cy, s, t) {
+        ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
+        ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.beginPath(); ctx.ellipse(0, 68, 58, 11, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#F5E6D3'; ctx.fillRect(-48, -28, 96, 92);
+        ctx.fillStyle = 'rgba(0,0,0,0.03)'; ctx.fillRect(20, -28, 28, 92);
+        ctx.fillStyle = '#BC4749'; ctx.beginPath(); ctx.moveTo(-58, -28); ctx.lineTo(0, -78); ctx.lineTo(58, -28); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.07)'; ctx.beginPath(); ctx.moveTo(0, -78); ctx.lineTo(58, -28); ctx.lineTo(0, -28); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#5C4033'; ctx.fillRect(-11, 12, 22, 52);
+        ctx.fillStyle = '#C0A060'; ctx.beginPath(); ctx.arc(7, 40, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#87CEEB'; ctx.fillRect(-38, -14, 20, 20); ctx.fillRect(18, -14, 20, 20);
+        ctx.strokeStyle = '#F5E6D3'; ctx.lineWidth = 2;
+        ctx.strokeRect(-38, -14, 20, 20); ctx.strokeRect(18, -14, 20, 20);
+        ctx.beginPath(); ctx.moveTo(-28, -14); ctx.lineTo(-28, 6); ctx.moveTo(-38, -4); ctx.lineTo(-18, -4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(28, -14); ctx.lineTo(28, 6); ctx.moveTo(18, -4); ctx.lineTo(38, -4); ctx.stroke();
+        ctx.fillStyle = '#A05040'; ctx.fillRect(24, -73, 13, 28);
+        ctx.fillStyle = 'rgba(180,170,160,0.25)';
+        const so = Math.sin(t * 0.0018) * 5;
+        ctx.beginPath(); ctx.arc(30 + so, -82, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(33 + so * 1.2, -92, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+
+    function drawPerson(cx, cy, s, t) {
+        ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
+        ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.beginPath(); ctx.ellipse(0, 72, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#3D3D3D'; ctx.fillRect(-13, 22, 11, 44); ctx.fillRect(2, 22, 11, 44);
+        ctx.fillStyle = '#2C2C2C'; ctx.fillRect(-15, 62, 15, 7); ctx.fillRect(0, 62, 15, 7);
+        ctx.fillStyle = '#264653'; ctx.beginPath(); ctx.moveTo(-20, -24); ctx.lineTo(20, -24); ctx.lineTo(16, 26); ctx.lineTo(-16, 26); ctx.closePath(); ctx.fill();
+        const armSwing = Math.sin(t * 0.002) * 0.06;
+        ctx.save(); ctx.translate(-20, -18); ctx.rotate(-0.1 + armSwing);
+        ctx.fillStyle = '#264653'; ctx.fillRect(-11, 0, 11, 38);
+        ctx.fillStyle = '#E8C4A0'; ctx.beginPath(); ctx.arc(-5, 40, 5.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        ctx.save(); ctx.translate(20, -18); ctx.rotate(0.1 - armSwing);
+        ctx.fillStyle = '#264653'; ctx.fillRect(0, 0, 11, 38);
+        ctx.fillStyle = '#E8C4A0'; ctx.beginPath(); ctx.arc(5, 40, 5.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        ctx.fillStyle = '#E8C4A0'; ctx.fillRect(-4, -31, 8, 9);
+        ctx.beginPath(); ctx.arc(0, -44, 17, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#3D2B1F'; ctx.beginPath(); ctx.arc(0, -49, 17, Math.PI, Math.PI * 2); ctx.fill(); ctx.fillRect(-17, -54, 34, 7);
+        ctx.fillStyle = '#2C2C2C'; ctx.beginPath(); ctx.arc(-5, -44, 1.8, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(5, -44, 1.8, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#C09070'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(0, -39, 5.5, 0.25, Math.PI - 0.25); ctx.stroke();
+        ctx.restore();
+    }
+
+    /* ==========================================================
+       LOOP
+       ========================================================== */
+    function loop(t) {
+        ctx.clearRect(0, 0, w, h);
+        if (currentMode === 1) drawMode1(t);
+        else if (currentMode === 2) drawMode2(t);
+        else drawMode3(t);
+        requestAnimationFrame(loop);
+    }
+
+    setupCanvas(); initShapeDots(); initPersp();
+    mx = w / 2; my = h / 2; canvas.style.cursor = 'none';
+    requestAnimationFrame(loop);
+
+    window.addEventListener('resize', () => { setupCanvas(); initShapeDots(); initPersp(); mx = w / 2; my = h / 2; });
+    </script>
+</body>
+</html>
