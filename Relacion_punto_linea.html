@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relaciones — Imagen Interactiva</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root{--bg:#1A1816;--fg:#F0EAE0;--muted:#7A7068;--accent:#B91C1C;--card:#FFFBF5;--border:#D6CFC5}
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        html,body{font-family:'Source Sans 3',sans-serif;background:var(--bg);color:var(--fg);width:100%;height:100%;overflow:hidden}
+        body{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px}
+        body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(185,28,28,.04) 0%,transparent 60%);pointer-events:none}
+        h2{font-family:'Playfair Display',serif}
+        .fw{animation:fi .9s cubic-bezier(.22,1,.36,1) both;width:100%;max-width:740px;display:flex;flex-direction:column;align-items:center}
+        @keyframes fi{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+        .frame{width:100%;max-width:740px;aspect-ratio:740/460;background:var(--card);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.25),0 16px 48px rgba(0,0,0,.2);overflow:hidden;position:relative}
+        .frame canvas{display:block;width:100%;height:100%}
+        .tabs{display:flex;gap:0;position:relative;z-index:2}
+        .tab{padding:9px 16px;background:rgba(255,251,245,.04);border:1px solid rgba(255,251,245,.07);border-bottom:none;border-radius:10px 10px 0 0;color:var(--muted);font-family:'Source Sans 3',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .35s;letter-spacing:.01em;white-space:nowrap}
+        .tab:hover{color:var(--fg);background:rgba(255,251,245,.08)}
+        .tab.on{background:var(--card);color:var(--accent);border-color:rgba(214,207,197,.5)}
+        .tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+        .tab i{margin-right:5px;font-size:.7rem}
+        .tc{position:absolute;top:10px;right:10px;display:flex;gap:5px;z-index:10}
+        .cb{padding:5px 12px;border-radius:6px;border:1.5px solid var(--border);background:rgba(255,251,245,.9);backdrop-filter:blur(8px);cursor:pointer;font-size:.7rem;font-weight:600;color:var(--fg);font-family:'Source Sans 3',sans-serif;transition:all .2s;display:flex;align-items:center;gap:5px}
+        .cb:hover{border-color:var(--accent);color:var(--accent)}
+        .cb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+        .ip{width:100%;max-width:740px;display:flex;align-items:baseline;gap:10px;padding:8px 0 0;min-height:2.4em}
+        .inm{font-family:'Playfair Display',serif;font-size:clamp(.8rem,2vw,.95rem);font-weight:700;color:var(--accent);white-space:nowrap;transition:opacity .3s}
+        .ids{font-size:clamp(.65rem,1.5vw,.78rem);color:var(--muted);line-height:1.4;transition:opacity .3s}
+        .cbar{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:740px;padding:6px 0 0}
+        .ctg{display:inline-flex;align-items:center;gap:6px;font-size:.65rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+        .ctg .di{width:4px;height:4px;border-radius:50%;background:var(--accent);animation:bl 2s ease-in-out infinite}
+        @keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}
+        @media(max-width:600px){.tab{padding:7px 10px;font-size:.68rem}.tab i{display:none}.cb{padding:4px 8px;font-size:.62rem}}
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+    </style>
+</head>
+<body>
+<div class="fw">
+    <h2 class="tracking-wider" style="color:var(--fg);letter-spacing:.1em;font-size:clamp(.9rem,2.5vw,1.2rem)">IMAGEN INTERACTIVA</h2>
+    <p class="mb-3" style="color:var(--muted);letter-spacing:.04em;font-size:clamp(.6rem,1.5vw,.75rem)">Relaciones entre puntos y líneas</p>
+    <div class="tabs" id="tabs">
+        <button class="tab on" data-mode="intersection"><i class="fa-solid fa-xmark"></i>Intersección</button>
+        <button class="tab" data-mode="parallel"><i class="fa-solid fa-grip-lines"></i>Paralelismo</button>
+        <button class="tab" data-mode="perpendicular"><i class="fa-solid fa-up-right-and-down-left-from-center"></i>Perpendicular</button>
+        <button class="tab" data-mode="cat"><i class="fa-solid fa-cat"></i>Gato</button>
+    </div>
+    <div class="frame" id="frame">
+        <canvas id="c"></canvas>
+        <div class="tc">
+            <button class="cb" id="btnReset" aria-label="Reiniciar"><i class="fa-solid fa-rotate-left" style="font-size:.6rem"></i> Reiniciar</button>
+            <div id="catCtrl" style="display:none;gap:5px">
+                <button class="cb" id="btnCatAnim"><i class="fa-solid fa-play" style="font-size:.55rem"></i> Animar</button>
+                <button class="cb" id="btnCatShow"><i class="fa-solid fa-eye" style="font-size:.55rem"></i> Mostrar</button>
+            </div>
+        </div>
+    </div>
+    <div class="ip"><span class="inm" id="iN">Intersección</span><span class="ids" id="iD">Arrastra los puntos para mover las líneas.</span></div>
+    <div class="cbar"><span class="ctg"><span class="di"></span> Ilustración interactiva</span><span class="ctg" style="opacity:.5">Arrastra los puntos</span></div>
+</div>
+
+<script>
+var canvas=document.getElementById('c'),frame=document.getElementById('frame'),
+    iN=document.getElementById('iN'),iD=document.getElementById('iD'),
+    catCtrl=document.getElementById('catCtrl');
+var ctx,w,h,currentMode='intersection',dragPt=null,DRAG_R=14;
+
+function setup(){var d=devicePixelRatio||1,r=frame.getBoundingClientRect();canvas.width=r.width*d;canvas.height=r.height*d;ctx=canvas.getContext('2d');ctx.scale(d,d);w=r.width;h=r.height}
+function lerp(a,b,t){return a+(b-a)*t}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v))}
+function hypot(dx,dy){return Math.sqrt(dx*dx+dy*dy)}
+
+/* ================================================================
+   PUNTOS POR MODO
+   ================================================================ */
+var iPts=[],pPts=[],prPts=[];
+
+function initPoints(){
+    var cx=w*.55,cy=h*.5;
+    iPts=[{x:cx-170,y:cy-110,l:'A'},{x:cx+170,y:cy+110,l:'B'},{x:cx-150,y:cy+110,l:'C'},{x:cx+150,y:cy-110,l:'D'}];
+    pPts=[
+        {x:cx-180,y:cy-60,l:'A',free:true},
+        {x:cx+180,y:cy-60,l:'B',free:true},
+        {x:cx-180,y:cy+60,l:'C',free:false},
+        {x:cx+180,y:cy+60,l:'D',free:false}
+    ];
+    prPts=[{x:cx-10,y:cy+10,l:'O'},{x:cx+170,y:cy-100,l:'A'},{x:cx+80,y:cy+160,l:'B'}];
+}
+
+function getActive(){if(currentMode==='intersection')return iPts;if(currentMode==='parallel')return pPts;return prPts}
+
+/* Recalcular C y D del paralelo según posición de A, B, C */
+function recalcParallel(){
+    var a=pPts[0],b=pPts[1],c=pPts[2];
+    var dx=b.x-a.x,dy=b.y-a.y,len=hypot(dx,dy);
+    if(len<1)return;
+    var nx=-dy/len,ny=dx/len;
+    var dist=ptLineDist(c.x,c.y,a.x,a.y,b.x,b.y);
+    var dir=dist>=0?1:-1;
+    if(Math.abs(dist)<1)dir=1;
+    var ad=Math.abs(dist);
+    pPts[2].x=a.x+nx*ad*dir;pPts[2].y=a.y+ny*ad*dir;
+    pPts[3].x=b.x+nx*ad*dir;pPts[3].y=b.y+ny*ad*dir;
+}
+
+/* ================================================================
+   CÁLCULOS GEOMÉTRICOS
+   ================================================================ */
+function lineIntersect(a,b,c,d){
+    var d1x=b.x-a.x,d1y=b.y-a.y,d2x=d.x-c.x,d2y=d.y-c_y;
+    var cross=d1x*d2y-d1y*d2x;
+    if(Math.abs(cross)<.001)return null;
+    var t=((c.x-a.x)*d2y-(c.y-a.y)*d2x)/cross;
+    var u=((c.x-a.x)*d1y-(c.y-a.y)*d1x)/cross;
+    return{x:a.x+t*d1x,y:a.y+t*d1y,t:t,u:u};
+}
+
+function isParallel(a,b,c,d){
+    var d1x=b.x-a.x,d1y=b.y-a.y,d2x=d.x-c.x,d2y=d.y-c.y;
+    return Math.abs(d1x*d2y-d1y*d2x)<3;
+}
+
+function ptLineDist(px,py,x1,y1,x2,y2){
+    var dx=x2-x1,dy=y2-y1,len=hypot(dx,dy);
+    if(len<.001)return 0;
+    return Math.abs((py-y1)*dx-(px-x1)*dy)/len;
+}
+
+function angleBetween(a,o,b){
+    var d1x=a.x-o.x,d1y=a.y-o.y,d2x=b.x-o.x,d2y=b.y-o.y;
+    var dot=d1x*d2x+d1y*d2y,m1=hypot(d1x,d1y),m2=hypot(d2x,d2y);
+    if(m1<.001||m2<.001)return 0;
+    return Math.acos(clamp(dot/(m1*m2),-1,1))*180/Math.PI;
+}
+
+/* ================================================================
+   GATO
+   ================================================================ */
+var catPts=[
+    {x:-55,y:-78},{x:-28,y:-50},{x:0,y:-60},{x:28,y:-50},{x:55,y:-78},
+    {x:58,y:-52},{x:54,y:-28},{x:44,y:-8},{x:50,y:20},{x:56,y:44},
+    {x:78,y:62},{x:100,y:38},{x:84,y:56},{x:48,y:68},{x:0,y:76},
+    {x:-45,y:68},{x:-52,y:40},{x:-42,y:12},{x:-44,y:-8},{x:-54,y:-28},{x:-60,y:-52},
+    {x:-18,y:-36},{x:18,y:-36},{x:0,y:-22},{x:-7,y:-15},{x:7,y:-15}
+];
+var catSegs=[];
+for(var i=0;i<21;i++)catSegs.push({t:'L',a:i,b:(i+1)%21});
+catSegs.push({t:'E',i:21});catSegs.push({t:'E',i:22});
+catSegs.push({t:'N',i:23});
+catSegs.push({t:'L',a:24,b:23});catSegs.push({t:'L',a:23,b:25});
+catSegs.push({t:'W'});
+var catWhiskers=[
+    {x1:-22,y1:-30,x2:-65,y2:-38},{x1:-20,y1:-26,x2:-68,y2:-26},{x1:-22,y1:-22,x2:-65,y2:-14},
+    {x1:22,y1:-30,x2:65,y2:-38},{x1:20,y1:-26,x2:68,y2:-26},{x1:22,y1:-22,x2:65,y2:-14}
+];
+var catReveal=0,catAnimating=false,catTime=0,CAT_SPEED=140;
+function resetCat(){catReveal=0;catAnimating=false}
+
+/* ================================================================
+   DRAG
+   ================================================================ */
+function getPos(e){var r=canvas.getBoundingClientRect(),s=e.touches?e.touches[0]:e;return{x:s.clientX-r.left,y:s.clientY-r.top}}
+
+canvas.addEventListener('mousedown',function(e){
+    if(currentMode==='cat')return;var p=getPos(e),pts=getActive();
+    for(var i=0;i<pts.length;i++){if(pts[i].free===false)continue;if(hypot(p.x-pts[i].x,p.y-pts[i].y)<DRAG_R){dragPt=pts[i];break}}
+});
+canvas.addEventListener('mousemove',function(e){
+    if(!dragPt)return;var p=getPos(e);dragPt.x=p.x;dragPt.y=p.y;
+    if(currentMode==='parallel')recalcParallel();
+});
+canvas.addEventListener('mouseup',function(){dragPt=null});
+canvas.addEventListener('mouseleave',function(){dragPt=null});
+canvas.addEventListener('touchstart',function(e){
+    if(currentMode==='cat')return;e.preventDefault();var p=getPos(e),pts=getActive();
+    for(var i=0;i<pts.length;i++){if(pts[i].free===false)continue;if(hypot(p.x-pts[i].x,p.y-pts[i].y)<DRAG_R+6){dragPt=pts[i];break}}
+},{passive:false});
+canvas.addEventListener('touchmove',function(e){if(!dragPt)return;e.preventDefault();var p=getPos(e);dragPt.x=p.x;dragPt.y=p.y;if(currentMode==='parallel')recalcParallel()},{passive:false});
+canvas.addEventListener('touchend',function(){dragPt=null},{passive:false});
+
+/* ================================================================
+   DIBUJO — UTILIDADES
+   ================================================================ */
+function drawPaper(){ctx.fillStyle='#FFFBF5';ctx.fillRect(0,0,w,h);ctx.strokeStyle='rgba(100,140,180,.04)';ctx.lineWidth=.5;ctx.setLineDash([]);var y,x;for(y=20;y<h;y+=20){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}for(x=20;x<w;x+=20){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}}
+
+function drawPoint(x,y,label,col,r){
+    ctx.fillStyle=col||'#1C1917';ctx.beginPath();ctx.arc(x,y,r||5,0,Math.PI*2);ctx.fill();
+    if(label){ctx.fillStyle=col||'#1C1917';ctx.font='700 11px "Source Sans 3"';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(label,x,y-r-4)}
+}
+
+function drawLine(a,b,lw,dash,col){ctx.strokeStyle=col||'#1C1917';ctx.lineWidth=lw||2;ctx.setLineDash(dash||[]);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([])}
+
+function drawArrowHead(ox,oy,ang,sz){ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(ox-sz*Math.cos(ang-Math.PI/7),oy-sz*Math.sin(ang-Math.PI/7));ctx.lineTo(ox-sz*Math.cos(ang+Math.PI/7),oy-sz*Math.sin(ang+Math.PI/7));ctx.closePath();ctx.fill()}
+
+function resetCtx(){ctx.setLineDash([]);ctx.lineCap='butt';ctx.lineJoin='miter';ctx.fillStyle='#1C1917';ctx.strokeStyle='#1C1917';ctx.lineWidth=1}
+
+/* ================================================================
+   MODO: INTERSECCIÓN
+   ================================================================ */
+function drawIntersection(t){
+    var p=iPts;resetCtx();
+    drawLine(p[0],p[1],2.2);drawLine(p[2],p[3],2.2);
+    var d1x=p[1].x-p[0].x,d1y=p[1].y-p[0].y,d2x=p[3].x-p[2].x,d2y=p[3].y-p[2].y;
+    var cross=d1x*d2y-d1y*d2x;
+    if(Math.abs(cross)<.001)return;
+    var t=((p[2].x-p[0].x)*d2y-(p[2].y-p[0].y)*d2x)/cross;
+    var u=((p[2].x-p[0].x)*d1y-(p[2].y-p[0].y)*d1x)/cross;
+    var ix=p[0].x+t*d1x,iy=p[0].y+t*d1y;
+    if(t>=0&&t<=1&&u>=0&&u<=1){
+        var pulse=4+Math.sin(t*.004)*1.5;
+        ctx.fillStyle='rgba(185,28,28,0.12)';ctx.beginPath();ctx.arc(ix,iy,pulse+6,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#B91C1C';ctx.beginPath();ctx.arc(ix,iy,4,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#B91C1C';ctx.font='600 10px "Source Sans 3"';ctx.textAlign='left';ctx.textBaseline='bottom';
+        ctx.fillText('('+Math.round(ix)+', '+Math.round(iy)+')',ix+10,iy-6);
+        iD.textContent='Las líneas se intersectan en el punto rojo.';
+    } else { iD.textContent='Arrastra los puntos para encontrar la intersección.' }
+    for(var i=0;i<p.length;i++)drawPoint(p[i].x,p[i].y,p[i].l,'#1C1917',6);
+    ctx.fillStyle='rgba(28,25,23,0.25)';ctx.font='400 10px "Source Sans 3"';ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText('Arrastra los puntos',w*.55,h-16);
+}
+
+/* ================================================================
+   MODO: PARALELISMO
+   ================================================================ */
+function drawParallel(t){
+    var p=pPts;resetCtx();recalcParallel();
+    drawLine(p[0],p[1],2.2);drawLine(p[2],p[3],2.2);
+    var dx=p[1].x-p[0].x,dy=p[1].y-p[0].y,len=hypot(dx,dy);
+    if(len>1){
+        var nx=-dy/len,ny=dx/len;
+        ctx.strokeStyle='rgba(185,28,28,0.15)';ctx.lineWidth=.6;ctx.setLineDash([3,5]);
+        var mx=(p[0].x+p[2].x)/2,my=(p[0].y+p[2].y)/2;
+        ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(mx+nx*50,my+ny*50);ctx.stroke();ctx.setLineDash([]);
+        var cu=8;ctx.strokeStyle='rgba(185,28,28,0.25)';ctx.lineWidth=1;ctx.beginPath();
+        ctx.moveTo(mx+nx*cu,my+ny*cu);ctx.lineTo(mx+nx*cu+dx/len*cu,my+ny*cu+dy/len*cu);
+        ctx.lineTo(mx+dx/len*cu,my+dy/len*cu);ctx.stroke();
+    }
+    var d1=ptLineDist(p[2].x,p[2].y,p[0].x,p[0].y,p[1].x,p[1].y);
+    var d2=ptLineDist(p[3].x,p[3].y,p[0].x,p[0].y,p[1].x,p[1].y);
+    var avg=(d1+d2)/2;
+    var mx1=(p[2].x+p[0].x)/2,my1=(p[2].y+p[0].y)/2;
+    var mx2=(p[3].x+p[1].x)/2,my2=(p[3].y+p[1].y)/2;
+    ctx.strokeStyle='rgba(185,28,28,0.3)';ctx.lineWidth=.8;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(mx1,my1);ctx.lineTo(mx2,my2);ctx.stroke();ctx.setLineDash([]);
+    var emx=(mx1+mx2)/2,emy=(my1+my2)/2;
+    ctx.font='600 10px "Source Sans 3"';ctx.textAlign='center';ctx.textBaseline='middle';
+    var dtxt='d = '+Math.round(avg);var tw=ctx.measureText(dtxt).width+10;
+    ctx.fillStyle='#FFFBF5';ctx.fillRect(emx-tw/2,emy-9,tw,16);
+    ctx.fillStyle='#B91C1C';ctx.fillText(dtxt,emx,emy);
+    var angle=Math.atan2(dy,dx)*180/Math.PI;
+    ctx.fillStyle='rgba(28,25,23,0.35)';ctx.font='400 10px "Source Sans 3"';ctx.textAlign='left';
+    ctx.fillText('\u03B8 = '+Math.round(angle)+'°',p[1].x+12,p[1].y-8);
+    ctx.fillStyle='#2D6A4F';ctx.font='700 13px "Source Sans 3"';ctx.textAlign='center';ctx.fillText('PARALELAS',w*.55,30);
+    iD.textContent='Arrastra A o B para rotar. Arrastra C para cambiar la distancia entre las líneas.';
+    drawPoint(p[0].x,p[0].y,p[0].l,'#1C1917',6);drawPoint(p[1].x,p[1].y,p[1].l,'#1C1917',6);
+    ctx.strokeStyle='rgba(185,28,28,0.3)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(p[2].x,p[2].y,11,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.arc(p[3].x,p[3].y,11,0,Math.PI*2);ctx.stroke();
+    drawPoint(p[2].x,p[2].y,p[2].l,'#B91C1C',5);drawPoint(p[3].x,p[3].y,p[3].l,'#B91C1C',5);
+    ctx.fillStyle='rgba(28,25,23,0.25)';ctx.font='400 10px "Source Sans 3"';ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText('A, B: rotar  |  C: desplazar',w*.55,h-16);
+}
+
+/* ================================================================
+   MODO: PERPENDICULARIDAD
+   ================================================================ */
+function drawPerpendicular(t){
+    var p=prPts;resetCtx();
+    var ang=angleBetween(p[1],p[0],p[2]);
+    drawLine(p[0],p[1],2.2);drawLine(p[0],p[2],2.2);
+    var r1=Math.atan2(p[1].y-p[0].y,p[1].x-p[0].x);
+    var r2=Math.atan2(p[2].y-p[0].y,p[2].x-p[0].x);
+    if(r2<r1)r2+=Math.PI*2;
+    ctx.strokeStyle='rgba(185,28,28,0.3)';ctx.lineWidth=1.2;ctx.setLineDash([]);
+    ctx.beginPath();ctx.arc(p[0].x,p[0].y,35,r1,r2);ctx.stroke();
+    var midA=(r1+r2)/2;
+    ctx.fillStyle='#B91C1C';ctx.font='600 11px "Source Sans 3"';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(Math.round(ang)+'°',p[0].x+Math.cos(midA)*50,p[0].y+Math.sin(midA)*50);
+    var isPerp=Math.abs(ang-90)<3;
+    if(isPerp){
+        var d1x=p[1].x-p[0].x,d1y=p[1].y-p[0].y,m1=hypot(d1x,d1y);
+        var d2x=p[2].x-p[0].x,d2y=p[2].y-p[0].y,m2=hypot(d2x,d2y);
+        if(m1>.1&&m2>.1){
+            var u1x=d1x/m1*14,u1y=d1y/m1*14,u2x=d2x/m2*14,u2y=d2y/m2*14;
+            ctx.strokeStyle='#B91C1C';ctx.lineWidth=1.8;ctx.beginPath();
+            ctx.moveTo(p[0].x+u1x,p[0].y+u1y);ctx.lineTo(p[0].x+u1x+u2x,p[0].y+u1y+u2y);
+            ctx.lineTo(p[0].x+u2x,p[0].y+u2y);ctx.stroke();
+        }
+        ctx.fillStyle='#2D6A4F';ctx.font='700 13px "Source Sans 3"';ctx.textAlign='center';ctx.fillText('PERPENDICULARES',w*.55,30);
+        iD.textContent='Las líneas son perpendiculares — forman un ángulo de 90° exacto.';
+    } else {
+        ctx.fillStyle='#BC4749';ctx.font='700 13px "Source Sans 3"';ctx.textAlign='center';ctx.fillText('NO PERPENDICULARES',w*.55,30);
+        iD.textContent='Las líneas forman un ángulo de '+Math.round(ang)+'° — arrastra para lograr 90°.';
+    }
+    for(var i=0;i<p.length;i++)drawPoint(p[i].x,p[i].y,p[i].l,'#1C1917',6);
+    ctx.fillStyle='rgba(28,25,23,0.25)';ctx.font='400 10px "Source Sans 3"';ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText('Arrastra los puntos A y B',w*.55,h-16);
+}
+
+/* ================================================================
+   MODO: GATO
+   ================================================================ */
+function drawCat(t){
+    resetCtx();var sc=Math.max(.45,Math.min(w/740,h/460))*1.05;
+    var ox=w*.52,oy=h*.5;ctx.save();ctx.translate(ox,oy);ctx.scale(sc,sc);
+    var shown=catAnimating?Math.floor(catReveal):catReveal;
+    for(var i=0;i<Math.min(shown,catSegs.length);i++){
+        var seg=catSegs[i];ctx.strokeStyle='#1C1917';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash([]);
+        if(seg.t==='L'){var pa=catPts[seg.a],pb=catPts[seg.b];ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke()}
+        else if(seg.t==='E'){var cp=catPts[seg.i];ctx.fillStyle='#1C1917';ctx.beginPath();ctx.arc(cp.x,cp.y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#FFFBF5';ctx.beginPath();ctx.arc(cp.x+2,cp.y-1,2.5,0,Math.PI*2);ctx.fill()}
+        else if(seg.t==='N'){var np=catPts[seg.i];ctx.fillStyle='#1C1917';ctx.beginPath();ctx.moveTo(np.x,np.y-5);ctx.lineTo(np.x-5,np.y+4);ctx.lineTo(np.x+5,np.y+4);ctx.closePath();ctx.fill()}
+        else if(seg.t==='W'){ctx.strokeStyle='rgba(28,25,23,0.45)';ctx.lineWidth=.8;for(var wi=0;wi<catWhiskers.length;wi++){ctx.beginPath();ctx.moveTo(catWhiskers[wi].x1,catWhiskers[wi].y1);ctx.lineTo(catWhiskers[wi].x2,catWhiskers[wi].y2);ctx.stroke()}}
+    }
+    if(catAnimating&&shown<catSegs.length){
+        var seg=catSegs[shown],frac=catReveal-shown;ctx.strokeStyle='#1C1917';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash([]);
+        if(seg.t==='L'){var pa=catPts[seg.a],pb=catPts[seg.b];ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(lerp(pa.x,pb.x,frac),lerp(pa.y,pb.y,frac));ctx.stroke()}
+    }
+    for(var i=0;i<catPts.length;i++){
+        var pt=catPts[i],isRevealed=false;
+        if(i<21)isRevealed=shown>0;else if(i<24)isRevealed=shown>=21;else isRevealed=shown>=22;
+        if(isRevealed||(!catAnimating&&catReveal>=catSegs.length)){
+            var glow=2+Math.sin(t*.003+i*.5)*.8;
+            ctx.fillStyle='rgba(185,28,28,0.08)';ctx.beginPath();ctx.arc(pt.x,pt.y,glow+6,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle='#B91C1C';ctx.beginPath();ctx.arc(pt.x,pt.y,4.5,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle='#1C1917';ctx.font='700 10px "Source Sans 3"';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText((i+1).toString(),pt.x,pt.y-8);
+        } else {
+            ctx.fillStyle='rgba(28,25,23,0.15)';ctx.beginPath();ctx.arc(pt.x,pt.y,4.5,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle='rgba(28,25,23,0.25)';ctx.font='700 10px "Source Sans 3"';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText((i+1).toString(),pt.x,pt.y-8);
+        }
+    }
+    ctx.restore();
+    if(catAnimating&&shown<catSegs.length)iD.textContent='Conectando puntos... ('+Math.min(shown+1,catSegs.length)+'/'+catSegs.length+')';
+    else if(catReveal>=catSegs.length)iD.textContent='26 puntos conectados por líneas rectas forman un gato.';
+    else iD.textContent='Puntos enumerados que al unirse con líneas rectas forman un gato.';
+}
+
+/* ================================================================
+   TABS
+   ================================================================ */
+var infoData={
+    intersection:{name:'Intersección',desc:'Arrastra los puntos para mover las líneas.'},
+    parallel:{name:'Paralelismo',desc:'Arrastra los puntos para mover las líneas.'},
+    perpendicular:{name:'Perpendicularidad',desc:'Arrastra los puntos A y B.'},
+    cat:{name:'Gato (puntos y líneas)',desc:'Puntos enumerados que al unirse con líneas rectas forman un gato.'}
+};
+
+document.querySelectorAll('.tab').forEach(function(tb){
+    tb.addEventListener('click',function(){
+        var m=tb.dataset.mode;if(m===currentMode)return;
+        currentMode=m;dragPt=null;resetCat();
+        document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on')});
+        tb.classList.add('on');
+        catCtrl.style.display=m==='cat'?'flex':'none';
+        canvas.style.cursor=m==='cat'?'default':CURSOR_GRAB;
+        iN.textContent=infoData[m].name;iD.textContent=infoData[m].desc;
+    });
+});
+
+/* ================================================================
+   BOTONES
+   ================================================================ */
+var CURSOR_GRAB='url("data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\'><circle cx=\'10\' cy=\'10\' r=\'8\' fill=\'none\' stroke=\'%23333\' stroke-width=\'1.5\'/><circle cx=\'10\' cy=\'10\' r=\'2\' fill=\'%23333\'/></svg>") 10 10, grab';
+var CURSOR_DRAG='url("data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\'><circle cx=\'10\' cy=\'10\' r=\'8\' fill=\'none\' stroke=\'%23B91C1C\' stroke-width=\'1.5\'/><circle cx=\'10\' cy=\'10\' r=\'2\' fill=\'%23B91C1C\'/></svg>") 10 10, grabbing';
+
+document.getElementById('btnReset').addEventListener('click',function(){
+    initPoints();resetCat();dragPt=null;
+});
+
+document.getElementById('btnCatAnim').addEventListener('click',function(){resetCat();catAnimating=true;catTime=performance.now()});
+document.getElementById('btnCatShow').addEventListener('click',function(){catReveal=catSegs.length;catAnimating=false});
+
+/* ================================================================
+   LOOP
+   ================================================================ */
+function loop(t){
+    ctx.clearRect(0,0,w,h);drawPaper();resetCtx();
+    if(currentMode==='intersection')drawIntersection(t);
+    else if(currentMode==='parallel')drawParallel(t);
+    else if(currentMode==='perpendicular')drawPerpendicular(t);
+    else drawCat(t);
+    if(catAnimating){catReveal=(t-catTime)/CAT_SPEED;if(catReveal>=catSegs.length){catReveal=catSegs.length;catAnimating=false}}
+    canvas.style.cursor=dragPt?CURSOR_DRAG:CURSOR_GRAB;
+    requestAnimationFrame(loop);
+}
+
+setup();initPoints();
+canvas.style.cursor=CURSOR_GRAB;
+requestAnimationFrame(loop);
+window.addEventListener('resize',function(){setup();initPoints();resetCat()});
+</script>
+</body>
+</html>
