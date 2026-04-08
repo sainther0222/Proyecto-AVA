@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Línea — Imagen Interactiva</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root{--bg:#1A1816;--fg:#F0EAE0;--muted:#7A7068;--accent:#B91C1C;--card:#FFFBF5;--border:#D6CFC5}
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        html,body{font-family:'Source Sans 3',sans-serif;background:var(--bg);color:var(--fg);width:100%;height:100%;overflow:hidden}
+        body{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px}
+        body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(185,28,28,.04) 0%,transparent 60%);pointer-events:none}
+        h2{font-family:'Playfair Display',serif}
+        .fw{animation:fi .9s cubic-bezier(.22,1,.36,1) both;width:100%;max-width:740px;display:flex;flex-direction:column;align-items:center}
+        @keyframes fi{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+        .frame{width:100%;max-width:740px;aspect-ratio:740/460;background:var(--card);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.25),0 16px 48px rgba(0,0,0,.2);overflow:hidden;position:relative}
+        .frame canvas{display:block;width:100%;height:100%}
+        .lp{position:absolute;left:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:5px;z-index:10}
+        .lb{width:46px;height:36px;border-radius:8px;border:2px solid var(--border);background:rgba(255,251,245,.92);backdrop-filter:blur(8px);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s;position:relative;padding:4px 7px}
+        .lb:hover{border-color:var(--accent);transform:scale(1.08)}
+        .lb.on{background:var(--accent);border-color:var(--accent);box-shadow:0 2px 10px rgba(185,28,28,.25)}
+        .lb.on svg line{stroke:#fff}.lb.on svg polygon{fill:#fff}
+        .lb svg line{stroke:var(--muted)}.lb svg polygon{fill:var(--muted);stroke:none}
+        .lb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+        .lb .tp{position:absolute;left:54px;white-space:nowrap;background:rgba(28,25,23,.9);color:#fff;padding:3px 9px;border-radius:5px;font-size:.68rem;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
+        .lb:hover .tp{opacity:1}
+        .tc{position:absolute;top:10px;right:10px;display:flex;gap:6px;z-index:10}
+        .cb{padding:5px 14px;border-radius:6px;border:1.5px solid var(--border);background:rgba(255,251,245,.9);backdrop-filter:blur(8px);cursor:pointer;font-size:.72rem;font-weight:600;color:var(--fg);font-family:'Source Sans 3',sans-serif;transition:all .2s;display:flex;align-items:center;gap:5px}
+        .cb:hover{border-color:var(--accent);color:var(--accent)}
+        .cb.da{background:var(--accent);border-color:var(--accent);color:#fff}
+        .cb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+        .ip{width:100%;max-width:740px;display:flex;align-items:baseline;gap:10px;padding:8px 0 0}
+        .inm{font-family:'Playfair Display',serif;font-size:clamp(.8rem,2vw,.95rem);font-weight:700;color:var(--accent);white-space:nowrap}
+        .ids{font-size:clamp(.65rem,1.5vw,.78rem);color:var(--muted);line-height:1.4}
+        .cbar{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:740px;padding:6px 0 0}
+        .ctg{display:inline-flex;align-items:center;gap:6px;font-size:.65rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+        .ctg .di{width:4px;height:4px;border-radius:50%;background:var(--accent);animation:bl 2s ease-in-out infinite}
+        @keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}
+        @media(max-width:500px){.lb{width:40px;height:32px}.lb svg{transform:scale(.85)}.cb{padding:4px 10px;font-size:.65rem}}
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+    </style>
+</head>
+<body>
+<div class="fw">
+    <h2 class="tracking-wider" style="color:var(--fg);letter-spacing:.1em;font-size:clamp(.9rem,2.5vw,1.2rem)">IMAGEN INTERACTIVA</h2>
+    <p class="mb-3" style="color:var(--muted);letter-spacing:.04em;font-size:clamp(.6rem,1.5vw,.75rem)">La Línea — Tipos de línea en dibujo técnico</p>
+    <div class="frame" id="frame">
+        <canvas id="c"></canvas>
+        <div class="lp">
+            <button class="lb on" data-type="thick" aria-label="Continua gruesa">
+                <svg width="28" height="4" viewBox="0 0 28 4"><line x1="0" y1="2" x2="28" y2="2" stroke-width="3.5" stroke-linecap="round"/></svg>
+                <span class="tp">Continua gruesa</span>
+            </button>
+            <button class="lb" data-type="thin" aria-label="Continua fina">
+                <svg width="28" height="4" viewBox="0 0 28 4"><line x1="0" y1="2" x2="28" y2="2" stroke-width="1" stroke-linecap="round"/></svg>
+                <span class="tp">Continua fina</span>
+            </button>
+            <button class="lb" data-type="dotted" aria-label="Punteada">
+                <svg width="28" height="4" viewBox="0 0 28 4"><line x1="2" y1="2" x2="26" y2="2" stroke-width="2.8" stroke-linecap="round" stroke-dasharray="1.2 4.8"/></svg>
+                <span class="tp">Punteada</span>
+            </button>
+            <button class="lb" data-type="dashdot" aria-label="Trazo-punto">
+                <svg width="28" height="4" viewBox="0 0 28 4"><line x1="0" y1="2" x2="28" y2="2" stroke-width="1" stroke-linecap="round" stroke-dasharray="8 3 1.5 3"/></svg>
+                <span class="tp">Trazo-punto</span>
+            </button>
+            <button class="lb" data-type="dimension" aria-label="Dimensión">
+                <svg width="28" height="10" viewBox="0 0 28 10"><line x1="4" y1="5" x2="24" y2="5" stroke-width=".8"/><polygon points="4,5 8,2.5 8,7.5"/><polygon points="24,5 20,2.5 20,7.5"/></svg>
+                <span class="tp">Dimensión</span>
+            </button>
+        </div>
+        <div class="tc">
+            <button class="cb" id="btnDemo" aria-label="Demo"><i class="fa-solid fa-play" style="font-size:.6rem"></i> Demo</button>
+            <button class="cb" id="btnClear" aria-label="Borrar"><i class="fa-solid fa-eraser" style="font-size:.6rem"></i> Borrar</button>
+        </div>
+    </div>
+    <div class="ip"><span class="inm" id="iN">Línea continua gruesa</span><span class="ids" id="iD">Para dibujar el borde visible de un objeto.</span></div>
+    <div class="cbar"><span class="ctg"><span class="di"></span> Ilustración interactiva</span><span class="ctg" style="opacity:.5">Dibuja seleccionando un tipo de línea</span></div>
+</div>
+
+<script>
+var canvas = document.getElementById('c');
+var frame = document.getElementById('frame');
+var iN = document.getElementById('iN');
+var iD = document.getElementById('iD');
+var btnDemo = document.getElementById('btnDemo');
+var btnClear = document.getElementById('btnClear');
+var ctx, w, h;
+
+function setupCanvas() {
+    var d = devicePixelRatio || 1, r = frame.getBoundingClientRect();
+    canvas.width = r.width * d; canvas.height = r.height * d;
+    ctx = canvas.getContext('2d'); ctx.scale(d, d);
+    w = r.width; h = r.height;
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function hypot(dx, dy) { return Math.sqrt(dx * dx + dy * dy); }
+
+/* ================================================================
+   ESTILOS
+   ================================================================ */
+var LS = {
+    thick:     { lw:2.8, dash:[],             cap:'round', name:'Línea continua gruesa',       desc:'Para dibujar el borde visible de un objeto.' },
+    thin:      { lw:0.8, dash:[],             cap:'round', name:'Línea continua fina',         desc:'Para medidas, líneas de ayuda y ejes.' },
+    dotted:    { lw:1.8, dash:[1.2,5],        cap:'round', name:'Línea de puntos',             desc:'Para mostrar bordes que no se ven en ese dibujo.' },
+    dashdot:   { lw:0.8, dash:[12,3,2,3],     cap:'round', name:'Línea de eje (trazo-punto)',  desc:'Para mostrar el centro de un círculo o de una figura simétrica.' },
+    dimension: { lw:0.8, dash:[],             cap:'butt',  name:'Línea de dimensión',          desc:'Para escribir cuánto mide una parte del dibujo.' }
+};
+
+function applyLS(type) {
+    var s = LS[type];
+    ctx.strokeStyle = '#1C1917'; ctx.lineWidth = s.lw;
+    ctx.setLineDash(s.dash.slice()); ctx.lineCap = s.cap; ctx.lineJoin = 'round';
+}
+
+function resetCtx() {
+    ctx.setLineDash([]); ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+    ctx.fillStyle = '#1C1917'; ctx.strokeStyle = '#1C1917'; ctx.lineWidth = 1;
+}
+
+/* ================================================================
+   CORRECCIÓN AUTOMÁTICA DE FORMAS
+   ================================================================ */
+function analyzeShape(pts) {
+    if (pts.length < 3) return 'line';
+    /* Calcular cuántos puntos quedan al quitar los cercanos al segmento inicio→fin */
+    var first = pts[0], last = pts[pts.length - 1];
+    var dx = last.x - first.x, dy = last.y - first.y;
+    var segLen = hypot(dx, dy);
+    if (segLen < 15) return 'line';
+    var nx = -dy / segLen, ny = dx / segLen;
+    var offCount = 0, maxOff = 0;
+    for (var i = 1; i < pts.length - 1; i++) {
+        var off = Math.abs((pts[i].x - first.x) * nx + (pts[i].y - first.y) * ny);
+        if (off > 6) offCount++;
+        if (off > maxOff) maxOff = off;
+    }
+    /* Si la mayoría de puntos están cerca de la línea → es línea */
+    if (offCount < pts.length * 0.3 || maxOff < segLen * 0.08) return 'line';
+    /* Si hay suficientes puntos desviados → es círculo */
+    return 'circle';
+}
+
+function computeCircle(pts) {
+    var sx = 0, sy = 0;
+    for (var i = 0; i < pts.length; i++) { sx += pts[i].x; sy += pts[i].y; }
+    var cx = sx / pts.length, cy = sy / pts.length;
+    var dists = [];
+    for (var i = 0; i < pts.length; i++) dists.push(hypot(pts[i].x - cx, pts[i].y - cy));
+    dists.sort(function(a, b) { return a - b; });
+    var r = 0;
+    for (var i = 0; i < dists.length; i++) r += dists[i];
+    r /= dists.length;
+    return { cx: cx, cy: cy, r: Math.max(5, r) };
+}
+
+/* ================================================================
+   DIBUJO LIBRE
+   ================================================================ */
+var currentType = 'thick';
+var strokes = [];
+var isDrawing = false;
+var curPts = [];
+
+function getPos(e) {
+    var r = canvas.getBoundingClientRect();
+    var src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+}
+
+function startDraw(e) {
+    if (demoRunning) return;
+    e.preventDefault();
+    curPts = [getPos(e)];
+    isDrawing = true;
+}
+function moveDraw(e) {
+    if (!isDrawing || demoRunning) return;
+    e.preventDefault();
+    curPts.push(getPos(e));
+}
+function endDraw(e) {
+    if (!isDrawing) return;
+    if (e) e.preventDefault();
+    isDrawing = false;
+    if (!curPts || curPts.length < 2) { curPts = []; return; }
+
+    var shape = analyzeShape(curPts);
+    var type = currentType;
+
+    if (type === 'dimension') {
+        /* Dimensión siempre es línea recta inicio→fin */
+        var p1 = curPts[0], p2 = curPts[curPts.length - 1];
+        strokes.push({ kind: 'dimension', p1: p1, p2: p2, length: Math.round(hypot(p2.x - p1.x, p2.y - p1.y)) });
+    } else if (shape === 'circle') {
+        /* Círculo perfecto corregido */
+        var circ = computeCircle(curPts);
+        strokes.push({ kind: 'circle', type: type, cx: circ.cx, cy: circ.cy, r: circ.r });
+    } else {
+        /* Línea recta corregida */
+        strokes.push({ kind: 'line', type: type, p1: curPts[0], p2: curPts[curPts.length - 1] });
+    }
+    curPts = [];
+}
+
+canvas.addEventListener('mousedown', startDraw);
+canvas.addEventListener('mousemove', moveDraw);
+canvas.addEventListener('mouseup', endDraw);
+canvas.addEventListener('mouseleave', function() { if (isDrawing) endDraw(); });
+canvas.addEventListener('touchstart', startDraw, { passive: false });
+canvas.addEventListener('touchmove', moveDraw, { passive: false });
+canvas.addEventListener('touchend', endDraw, { passive: false });
+
+/* ================================================================
+   RENDERIZADO
+   ================================================================ */
+function drawArrowHead(ox, oy, ang, sz) {
+    ctx.beginPath(); ctx.moveTo(ox, oy);
+    ctx.lineTo(ox - sz * Math.cos(ang - Math.PI / 7), oy - sz * Math.sin(ang - Math.PI / 7));
+    ctx.lineTo(ox - sz * Math.cos(ang + Math.PI / 7), oy - sz * Math.sin(ang + Math.PI / 7));
+    ctx.closePath(); ctx.fill();
+}
+
+function renderStroke(s) {
+    ctx.save();
+    ctx.setLineDash([]); ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+    ctx.strokeStyle = '#1C1917'; ctx.fillStyle = '#1C1917';
+
+    if (s.kind === 'dimension') {
+        ctx.lineWidth = LS.dimension.lw;
+        ctx.beginPath(); ctx.moveTo(s.p1.x, s.p1.y); ctx.lineTo(s.p2.x, s.p2.y); ctx.stroke();
+        var ang = Math.atan2(s.p2.y - s.p1.y, s.p2.x - s.p1.x);
+        drawArrowHead(s.p1.x, s.p1.y, ang, 7);
+        drawArrowHead(s.p2.x, s.p2.y, ang + Math.PI, 7);
+        var mx = (s.p1.x + s.p2.x) / 2, my = (s.p1.y + s.p2.y) / 2;
+        var fs = Math.max(9, Math.min(12, w * 0.016));
+        ctx.font = '600 ' + fs + 'px "Source Sans 3"';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        var txt = s.length.toString();
+        var tw = ctx.measureText(txt).width + 8, th = fs + 4;
+        ctx.fillStyle = '#FFFBF5';
+        ctx.fillRect(mx - tw / 2, my - th / 2 - 12, tw, th);
+        ctx.fillStyle = '#1C1917'; ctx.fillText(txt, mx, my - 12);
+
+    } else if (s.kind === 'circle') {
+        applyLS(s.type);
+        ctx.beginPath(); ctx.arc(s.cx, s.cy, s.r, 0, Math.PI * 2); ctx.stroke();
+
+    } else {
+        applyLS(s.type);
+        ctx.beginPath(); ctx.moveTo(s.p1.x, s.p1.y); ctx.lineTo(s.p2.x, s.p2.y); ctx.stroke();
+    }
+
+    ctx.restore();
+    resetCtx();
+}
+
+/* ================================================================
+   FONDO
+   ================================================================ */
+function drawPaper() {
+    ctx.fillStyle = '#FFFBF5'; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(100,140,180,0.04)'; ctx.lineWidth = 0.5; ctx.setLineDash([]);
+    var y, x;
+    for (y = 20; y < h; y += 20) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    for (x = 20; x < w; x += 20) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+}
+
+/* ================================================================
+   DEMO
+   ================================================================ */
+var demoRunning = false, demoSteps = [], demoIdx = 0, demoStart = 0, demoDone = [];
+
+function buildDemo() {
+    var sc = Math.max(0.5, Math.min(w / 740, h / 460));
+    var cx = w * 0.54, cy = h * 0.50;
+    var pw = 240 * sc, ph = 150 * sc;
+    var px = cx - pw / 2, py = cy - ph / 2;
+    var hr = 22 * sc, hcx = cx, hcy = cy + 8 * sc;
+    var off = 26 * sc, asz = 6 * sc, fs = Math.max(8, 10 * sc);
+    var segs = [
+        [{x:px,y:py},{x:px+pw,y:py}],
+        [{x:px+pw,y:py},{x:px+pw,y:py+ph}],
+        [{x:px+pw,y:py+ph},{x:px,y:py+ph}],
+        [{x:px,y:py+ph},{x:px,y:py}]
+    ];
+    return [
+        {type:'thick',dur:1600,pause:600,mode:'draw',fn:function(p){
+            var si=Math.min(3,Math.floor(p*4)),sp=clamp(p*4-si,0,1);
+            applyLS('thick');ctx.beginPath();ctx.moveTo(segs[0][0].x,segs[0][0].y);
+            for(var i=0;i<si;i++)ctx.lineTo(segs[i][1].x,segs[i][1].y);
+            ctx.lineTo(lerp(segs[si][0].x,segs[si][1].x,sp),lerp(segs[si][0].y,segs[si][1].y,sp));ctx.stroke();
+        }},
+        {type:'thick',dur:900,pause:500,mode:'draw',fn:function(p){
+            applyLS('thick');ctx.beginPath();ctx.arc(hcx,hcy,hr,-Math.PI/2,-Math.PI/2+Math.PI*2*p);ctx.stroke();
+        }},
+        {type:'dotted',dur:700,pause:500,mode:'fade',fn:function(){
+            applyLS('dotted');ctx.beginPath();ctx.moveTo(px+8*sc,cy-24*sc);ctx.lineTo(px+pw-8*sc,cy-24*sc);ctx.stroke();
+        }},
+        {type:'dashdot',dur:700,pause:500,mode:'fade',fn:function(){
+            applyLS('dashdot');
+            ctx.beginPath();ctx.moveTo(hcx-hr-18*sc,hcy);ctx.lineTo(hcx+hr+18*sc,hcy);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(hcx,hcy-hr-18*sc);ctx.lineTo(hcx,hcy+hr+18*sc);ctx.stroke();
+        }},
+        {type:'thin',dur:700,pause:400,mode:'fade',fn:function(){
+            applyLS('thin');
+            ctx.beginPath();ctx.moveTo(px,py-off);ctx.lineTo(px,py-5*sc);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(px+pw,py-off);ctx.lineTo(px+pw,py-5*sc);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(px+pw+5*sc,py);ctx.lineTo(px+pw+off,py);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(px+pw+5*sc,py+ph);ctx.lineTo(px+pw+off,py+ph);ctx.stroke();
+        }},
+        {type:'dimension',dur:1000,pause:0,mode:'fade',fn:function(){
+            ctx.setLineDash([]);ctx.lineCap='butt';ctx.strokeStyle='#1C1917';ctx.lineWidth=LS.dimension.lw;
+            var cY=py-off+7*sc;ctx.beginPath();ctx.moveTo(px,cY);ctx.lineTo(px+pw,cY);ctx.stroke();
+            ctx.fillStyle='#1C1917';drawArrowHead(px,cY,0,asz);drawArrowHead(px+pw,cY,Math.PI,asz);
+            ctx.font='600 '+fs+'px "Source Sans 3"';ctx.textAlign='center';ctx.textBaseline='bottom';
+            var tw1=ctx.measureText('240').width+6;ctx.fillStyle='#FFFBF5';ctx.fillRect(cx-tw1/2,cY-fs-3,tw1,fs+2);
+            ctx.fillStyle='#1C1917';ctx.fillText('240',cx,cY-2);
+            var cX=px+pw+off-7*sc;ctx.strokeStyle='#1C1917';ctx.lineWidth=LS.dimension.lw;
+            ctx.beginPath();ctx.moveTo(cX,py);ctx.lineTo(cX,py+ph);ctx.stroke();
+            ctx.fillStyle='#1C1917';drawArrowHead(cX,py,Math.PI/2,asz);drawArrowHead(cX,py+ph,-Math.PI/2,asz);
+            ctx.save();ctx.translate(cX+4,cy);ctx.rotate(-Math.PI/2);
+            ctx.font='600 '+fs+'px "Source Sans 3"';ctx.textAlign='center';ctx.textBaseline='bottom';
+            var tw2=ctx.measureText('150').width+6;ctx.fillStyle='#FFFBF5';ctx.fillRect(-tw2/2,-fs-3,tw2,fs+2);
+            ctx.fillStyle='#1C1917';ctx.fillText('150',0,-2);ctx.restore();
+        }}
+    ];
+}
+
+function startDemo() {
+    strokes=[];demoDone=[];demoSteps=buildDemo();demoIdx=0;demoStart=performance.now();
+    demoRunning=true;canvas.style.cursor='default';btnDemo.classList.add('da');updateInfo(demoSteps[0].type);
+}
+function endDemo(){demoRunning=false;canvas.style.cursor='crosshair';btnDemo.classList.remove('da')}
+function updateInfo(t){iN.textContent=LS[t].name;iD.textContent=LS[t].desc}
+
+btnDemo.addEventListener('click',function(){if(!demoRunning)startDemo()});
+btnClear.addEventListener('click',function(){if(demoRunning)endDemo();strokes=[];demoDone=[]});
+
+document.querySelectorAll('.lb').forEach(function(b){
+    b.addEventListener('click',function(){
+        if(demoRunning)return;currentType=b.dataset.type;
+        document.querySelectorAll('.lb').forEach(function(x){x.classList.remove('on')});
+        b.classList.add('on');updateInfo(currentType);
+    });
+});
+
+/* ================================================================
+   LOOP
+   ================================================================ */
+function loop(t) {
+    ctx.clearRect(0,0,w,h);
+    drawPaper(); resetCtx();
+
+    /* Strokes guardados */
+    for(var i=0;i<strokes.length;i++) renderStroke(strokes[i]);
+
+    /* Preview en vivo: guía visual mientras dibujas */
+    if(isDrawing && curPts.length > 1) {
+        var shape = analyzeShape(curPts);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(185,28,28,0.35)';
+        ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]); ctx.lineCap = 'round';
+
+        if(shape === 'circle') {
+            var c = computeCircle(curPts);
+            ctx.beginPath(); ctx.arc(c.cx, c.cy, c.r, 0, Math.PI * 2); ctx.stroke();
+        } else {
+            ctx.beginPath();
+            ctx.moveTo(curPts[0].x, curPts[0].y);
+            ctx.lineTo(curPts[curPts.length - 1].x, curPts[curPts.length - 1].y);
+            ctx.stroke();
+        }
+        ctx.restore(); resetCtx();
+    }
+
+    /* Demo */
+    if(demoRunning){
+        for(var i=0;i<demoDone.length;i++){ctx.save();demoDone[i].fn(1);ctx.restore();resetCtx()}
+        if(demoIdx<demoSteps.length){
+            var step=demoSteps[demoIdx],elapsed=t-demoStart,progress=clamp(elapsed/step.dur,0,1);
+            ctx.save();
+            if(step.mode==='fade'){ctx.globalAlpha=progress;step.fn(1)}else{step.fn(progress)}
+            ctx.restore();resetCtx();
+            if(elapsed>=step.dur+step.pause){
+                demoDone.push(step);demoIdx++;demoStart=t;
+                if(demoIdx<demoSteps.length)updateInfo(demoSteps[demoIdx].type);
+                else setTimeout(endDemo,400);
+            }
+        }
+    }
+
+    /* Indicador */
+    if(strokes.length===0&&!isDrawing&&!demoRunning&&demoDone.length===0){
+        var a=0.25+Math.sin(t*0.003)*0.12;
+        ctx.fillStyle='rgba(139,126,116,'+a+')';
+        ctx.font='600 '+Math.max(10,Math.min(13,w*0.018))+'px "Source Sans 3",sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('Dibuja o presiona Demo',w*0.54,h-18);
+    }
+
+    requestAnimationFrame(loop);
+}
+
+setupCanvas();canvas.style.cursor='crosshair';
+requestAnimationFrame(loop);
+window.addEventListener('resize',function(){setupCanvas();if(demoRunning){endDemo();demoDone=[]}});
+</script>
+</body>
+</html>
