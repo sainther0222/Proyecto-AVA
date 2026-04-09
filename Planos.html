@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planos — Imagen Interactiva</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root{--bg:#1A1816;--fg:#F0EAE0;--muted:#7A7068;--accent:#B91C1C;--card:#FFFBF5;--border:#D6CFC5;--cx:#264653;--cy:#2A9D8F;--cz:#E76F51}
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        html,body{font-family:'Source Sans 3',sans-serif;background:var(--bg);color:var(--fg);width:100%;height:100%;overflow:hidden}
+        body{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px}
+        body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(38,70,83,.04) 0%,transparent 60%);pointer-events:none}
+        h2{font-family:'Playfair Display',serif}
+        .fw{animation:fi .9s cubic-bezier(.22,1,.36,1) both;width:100%;max-width:740px;display:flex;flex-direction:column;align-items:center}
+        @keyframes fi{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+        .frame{width:100%;max-width:740px;aspect-ratio:740/460;background:var(--card);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.25),0 16px 48px rgba(0,0,0,.2);overflow:hidden;position:relative}
+        .frame canvas{display:block;width:100%;height:100%}
+        .tabs{display:flex;gap:0;position:relative;z-index:2}
+        .tab{padding:9px 14px;background:rgba(255,251,245,.04);border:1px solid rgba(255,251,245,.07);border-bottom:none;border-radius:10px 10px 0 0;color:var(--muted);font-family:'Source Sans 3',sans-serif;font-size:.76rem;font-weight:600;cursor:pointer;transition:all .35s;white-space:nowrap}
+        .tab:hover{color:var(--fg);background:rgba(255,251,245,.08)}
+        .tab.on{background:var(--card);color:var(--fg);border-color:rgba(214,207,197,.5)}
+        .tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+        .tc{position:absolute;top:10px;right:10px;z-index:10}
+        .cb{padding:5px 12px;border-radius:6px;border:1.5px solid var(--border);background:rgba(255,251,245,.9);backdrop-filter:blur(8px);cursor:pointer;font-size:.7rem;font-weight:600;color:var(--fg);font-family:'Source Sans 3',sans-serif;transition:all .2s;display:flex;align-items:center;gap:5px}
+        .cb:hover{border-color:var(--accent);color:var(--accent)}
+        .cb.on{background:var(--accent);border-color:var(--accent);color:#fff}
+        .cb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+        .ip{width:100%;max-width:740px;display:flex;align-items:baseline;gap:10px;padding:8px 0 0;min-height:2.4em}
+        .inm{font-family:'Playfair Display',serif;font-size:clamp(.8rem,2vw,.95rem);font-weight:700;color:var(--cx);white-space:nowrap;transition:all .3s}
+        .ids{font-size:clamp(.65rem,1.5vw,.78rem);color:var(--muted);line-height:1.4;transition:all .3s}
+        .cbar{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:740px;padding:6px 0 0}
+        .ctg{display:inline-flex;align-items:center;gap:6px;font-size:.65rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+        .ctg .di{width:4px;height:4px;border-radius:50%;background:var(--accent);animation:bl 2s ease-in-out infinite}
+        @keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}
+        @media(max-width:600px){.tab{padding:7px 9px;font-size:.66rem}.cb{padding:4px 8px;font-size:.62rem}}
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+    </style>
+</head>
+<body>
+<div class="fw">
+    <h2 style="color:var(--fg);letter-spacing:.1em;font-size:clamp(.9rem,2.5vw,1.2rem)">IMAGEN INTERACTIVA</h2>
+    <p style="color:var(--muted);letter-spacing:.04em;font-size:clamp(.6rem,1.5vw,.75rem);margin-bottom:12px">Planos en los ejes X, Y y Z — Dibujo técnico</p>
+    <div class="tabs" id="tabs">
+        <button class="tab on" data-mode="xy">Plano XY</button>
+        <button class="tab" data-mode="xz">Plano XZ</button>
+        <button class="tab" data-mode="yz">Plano YZ</button>
+    </div>
+    <div class="frame" id="frame">
+        <canvas id="c"></canvas>
+        <div class="tc">
+            <button class="cb on" id="btnToggle" aria-label="Alternar capas"><i class="fa-solid fa-layer-group" style="font-size:.6rem"></i> Capas</button>
+        </div>
+    </div>
+    <div class="ip"><span class="inm" id="iN" style="color:var(--cx)">Plano XY</span><span class="ids" id="iD">Es el plano horizontal, como el piso de tu cuarto. Lo forman los ejes X e Y.</span></div>
+    <div class="cbar"><span class="ctg"><span class="di"></span> Ilustración interactiva</span><span class="ctg" style="opacity:.5">Arrastra la vista</span></div>
+</div>
+
+<script>
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+        var rad = typeof r === 'number' ? r : (r && r[0]) || 0;
+        this.moveTo(x + rad, y);
+        this.lineTo(x + w - rad, y);
+        this.arcTo(x + w, y, x + w, y + rad, rad);
+        this.lineTo(x + w, y + h - rad);
+        this.arcTo(x + w, y + h, x + w - rad, y + h, rad);
+        this.lineTo(x + rad, y + h);
+        this.arcTo(x, y + h, x, y + h - rad, rad);
+        this.lineTo(x, y + rad);
+        this.arcTo(x, y, x + rad, y, rad);
+        this.closePath();
+    };
+}
+
+var canvas = document.getElementById('c');
+var frame = document.getElementById('frame');
+var iN = document.getElementById('iN');
+var iD = document.getElementById('iD');
+var ctx, w, h;
+var currentMode = 'xy';
+var showLayers = true;
+var sec = { ox: 0, oy: 0, ow: 0, oh: 0 };
+var dragView = false;
+var dragOff = { x: 0, y: 0 };
+
+var AX = {
+    x: { color: '#264653', label: 'X' },
+    y: { color: '#2A9D8F', label: 'Y' },
+    z: { color: '#E76F51', label: 'Z' }
+};
+
+var planos = {
+    xy: { label: 'Plano XY', eq: 'z = 0', desc: 'Horizontal (piso)', hAxis: 'x', vAxis: 'y', perpAxis: 'z', planeColor: AX.x.color },
+    xz: { label: 'Plano XZ', eq: 'y = 0', desc: 'Frontal (pared)', hAxis: 'x', vAxis: 'z', perpAxis: 'y', planeColor: AX.z.color },
+    yz: { label: 'Plano YZ', eq: 'x = 0', desc: 'Lateral (perfil)', hAxis: 'y', vAxis: 'z', perpAxis: 'x', planeColor: AX.y.color }
+};
+
+var infoData = {
+    xy: { name: 'Plano XY', desc: 'Es el plano horizontal, como el piso de tu cuarto. Lo forman los ejes X e Y, y todos sus puntos tienen Z = 0.', color: 'var(--cx)' },
+    xz: { name: 'Plano XZ', desc: 'Es el plano frontal, como la pared que miras de frente. Lo forman los ejes X y Z, y todos sus puntos tienen Y = 0.', color: 'var(--cz)' },
+    yz: { name: 'Plano YZ', desc: 'Es el plano lateral, como la pared a tu costado. Lo forman los ejes Y y Z, y todos sus puntos tienen X = 0.', color: 'var(--cy)' }
+};
+
+var cubeInfoData = {
+    xy: { name: 'Cubo — Plano XY', desc: 'Aristas visibles y ocultas del cubo vistas desde el plano XY.', color: 'var(--cx)' },
+    xz: { name: 'Cubo — Plano XZ', desc: 'Aristas visibles y ocultas del cubo vistas desde el plano XZ.', color: 'var(--cz)' },
+    yz: { name: 'Cubo — Plano YZ', desc: 'Aristas visibles y ocultas del cubo vistas desde el plano YZ.', color: 'var(--cy)' }
+};
+
+function hexToRgba(hex, a) {
+    var r = parseInt(hex.slice(1, 3), 16);
+    var g = parseInt(hex.slice(3, 5), 16);
+    var b = parseInt(hex.slice(5, 7), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+}
+
+function hexToRgb(hex) {
+    return {
+        r: parseInt(hex.slice(1, 3), 16),
+        g: parseInt(hex.slice(3, 5), 16),
+        b: parseInt(hex.slice(5, 7), 16)
+    };
+}
+
+function setup() {
+    var d = window.devicePixelRatio || 1;
+    var r = frame.getBoundingClientRect();
+    canvas.width = r.width * d;
+    canvas.height = r.height * d;
+    ctx = canvas.getContext('2d');
+    ctx.scale(d, d);
+    w = r.width;
+    h = r.height;
+    resetSec();
+}
+
+function resetSec() {
+    var pad = 50;
+    sec.ow = w - pad * 2;
+    sec.oh = h - pad * 2;
+    sec.ox = pad;
+    sec.oy = pad;
+    dragView = false;
+}
+
+function updateInfo() {
+    var data = showLayers ? infoData : cubeInfoData;
+    iN.textContent = data[currentMode].name;
+    iN.style.color = data[currentMode].color;
+    iD.textContent = data[currentMode].desc;
+}
+
+function drawPaper() {
+    ctx.fillStyle = '#FFFBF5';
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(100,140,180,0.06)';
+    ctx.lineWidth = 0.5;
+    for (var i = 0; i < w; i += 20) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke(); }
+    for (var j = 0; j < h; j += 20) { ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(w, j); ctx.stroke(); }
+}
+
+function iso(x, y, z) {
+    return { x: (x - y) * 0.7, y: (x + y) * 0.4 - z * 0.8 };
+}
+
+function drawArrow(x, y, ang, col, sz) {
+    sz = sz || 7;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - sz * Math.cos(ang - .4), y - sz * Math.sin(ang - .4));
+    ctx.lineTo(x - sz * Math.cos(ang + .4), y - sz * Math.sin(ang + .4));
+    ctx.closePath();
+    ctx.fill();
+}
+
+function drawSectionChrome(title) {
+    var p = planos[currentMode];
+    ctx.fillStyle = 'rgba(255,251,245,0.55)';
+    ctx.beginPath();
+    ctx.roundRect(sec.ox, sec.oy, sec.ow, sec.oh, 8);
+    ctx.fill();
+    ctx.strokeStyle = hexToRgba(p.planeColor, 0.35);
+    ctx.lineWidth = 2; ctx.setLineDash([]); ctx.stroke();
+
+    ctx.font = '700 14px "Source Sans 3"';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillStyle = p.planeColor;
+    ctx.fillText(title, sec.ox + sec.ow / 2, sec.oy + 12);
+
+    ctx.font = '400 10px "Source Sans 3"';
+    ctx.fillStyle = hexToRgba(p.planeColor, 0.55);
+    ctx.fillText(p.eq, sec.ox + sec.ow / 2, sec.oy + 30);
+
+    ctx.font = 'italic 400 9px "Source Sans 3"';
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    var sub = showLayers ? p.desc : 'Cara del cubo en el plano ' + p.desc.toLowerCase();
+    ctx.fillText(sub, sec.ox + sec.ow / 2, sec.oy + 44);
+}
+
+function drawTriedro() {
+    var p = planos[currentMode];
+    var cx = sec.ox + sec.ow / 2;
+    var cy = sec.oy + sec.oh * 0.58;
+    var scale = Math.min(sec.ow, sec.oh) * 0.1;
+    var len = 3 * scale;
+    var xE = iso(len, 0, 0), yE = iso(0, len, 0), zE = iso(0, 0, len);
+
+    var planes = [
+        { key: 'xy', pts: [iso(len,0,0), iso(len,len,0), iso(0,len,0)], col: AX.x.color },
+        { key: 'xz', pts: [iso(len,0,0), iso(len,0,len), iso(0,0,len)], col: AX.z.color },
+        { key: 'yz', pts: [iso(0,len,0), iso(0,len,len), iso(0,0,len)], col: AX.y.color }
+    ];
+
+    planes.forEach(function(pl) {
+        var isHl = pl.key === currentMode;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + pl.pts[0].x, cy + pl.pts[0].y);
+        ctx.lineTo(cx + pl.pts[1].x, cy + pl.pts[1].y);
+        ctx.lineTo(cx + pl.pts[2].x, cy + pl.pts[2].y);
+        ctx.closePath();
+        if (isHl) {
+            ctx.fillStyle = hexToRgba(pl.col, 0.25); ctx.fill();
+            ctx.strokeStyle = hexToRgba(pl.col, 0.7); ctx.lineWidth = 1.8; ctx.setLineDash([]); ctx.stroke();
+        } else {
+            ctx.fillStyle = 'rgba(0,0,0,0.025)'; ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = 0.7; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+        }
+    });
+
+    planes.forEach(function(pl) {
+        if (pl.key !== currentMode) return;
+        var mx = (pl.pts[0].x + pl.pts[1].x + pl.pts[2].x) / 3;
+        var my = (pl.pts[0].y + pl.pts[1].y + pl.pts[2].y) / 3;
+        ctx.font = '700 13px "Source Sans 3"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = hexToRgba(pl.col, 0.75);
+        ctx.fillText(p.label, cx + mx * 0.5, cy + my * 0.5);
+    });
+
+    [{ e: xE, k: 'x' }, { e: yE, k: 'y' }, { e: zE, k: 'z' }].forEach(function(a) {
+        var inP = currentMode.indexOf(a.k) !== -1;
+        var col = inP ? AX[a.k].color : hexToRgba(AX[a.k].color, 0.25);
+        ctx.strokeStyle = col; ctx.lineWidth = inP ? 2.2 : 1; ctx.lineCap = 'round'; ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + a.e.x, cy + a.e.y); ctx.stroke();
+        drawArrow(cx + a.e.x, cy + a.e.y, Math.atan2(a.e.y, a.e.x), col, inP ? 8 : 5);
+        ctx.font = (inP ? '700' : '500') + ' ' + (inP ? '13' : '10') + 'px "Source Sans 3"';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col;
+        ctx.fillText(AX[a.k].label, cx + a.e.x * 1.22, cy + a.e.y * 1.22);
+    });
+
+    ctx.fillStyle = '#1C1917'; ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.font = '600 9px "Source Sans 3"'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillText('O', cx + 5, cy + 3);
+
+    var hCol = AX[p.hAxis].color, vCol = AX[p.vAxis].color, perpCol = AX[p.perpAxis].color;
+    var by = sec.oy + sec.oh - 20, bcx = sec.ox + sec.ow / 2;
+    ctx.font = '600 9px "Source Sans 3"'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = hCol; ctx.textAlign = 'right'; ctx.fillText('Eje ' + AX[p.hAxis].label, bcx - 8, by);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.textAlign = 'center'; ctx.fillText('+', bcx, by);
+    ctx.fillStyle = vCol; ctx.textAlign = 'left'; ctx.fillText('Eje ' + AX[p.vAxis].label, bcx + 8, by);
+    ctx.font = '400 8px "Source Sans 3"'; ctx.fillStyle = hexToRgba(perpCol, 0.45);
+    ctx.textAlign = 'center'; ctx.fillText(AX[p.perpAxis].label + ' \u22A5 (perpendicular)', bcx, by + 14);
+}
+
+/* ========== ARISTAS ========== */
+var cubeEdges = {
+    xy: {
+        visible: [
+            { from: [0,1,0], to: [1,1,0] },
+            { from: [1,1,0], to: [1,0,0] },
+            { from: [1,0,1], to: [0,0,1] },
+            { from: [0,0,1], to: [0,1,1] },
+            { from: [0,1,1], to: [0,0,0] },
+            { from: [0,0,0], to: [1,0,1] }
+        ],
+        hidden: [
+            { from: [0,1,0], to: [0,0,0] },
+            { from: [0,0,0], to: [1,0,0] }
+        ]
+    },
+    xz: {
+        visible: [
+            { from: [0,0,1], to: [1,0,1] },
+            { from: [1,0,1], to: [1,0,0] },
+            { from: [0,1,1], to: [0,0,0] },
+            { from: [0,0,0], to: [1,1,0] },
+            { from: [1,1,0], to: [0,1,0] },
+            { from: [0,1,0], to: [0,1,1] }
+        ],
+        hidden: [
+            { from: [0,0,1], to: [0,0,0] },
+            { from: [0,0,0], to: [1,0,0] }
+        ]
+    },
+    yz: {
+        visible: [
+            { from: [0,0,1], to: [0,1,1] },
+            { from: [0,1,1], to: [0,1,0] },
+            { from: [1,1,0], to: [0,0,0] },
+            { from: [0,0,0], to: [1,0,1] },
+            { from: [1,0,1], to: [1,0,0] },
+            { from: [1,0,0], to: [1,1,0] }
+        ],
+        hidden: [
+            { from: [0,1,0], to: [0,0,0] },
+            { from: [0,0,0], to: [0,0,1] }
+        ]
+    }
+};
+
+var allCubeEdges = [
+    [0,0,0,1,0,0],[1,0,0,1,1,0],[1,1,0,0,1,0],[0,1,0,0,0,0],
+    [0,0,1,1,0,1],[1,0,1,1,1,1],[1,1,1,0,1,1],[0,1,1,0,0,1],
+    [0,0,0,0,0,1],[1,0,0,1,0,1],[1,1,0,1,1,1],[0,1,0,0,1,1]
+];
+
+/* Sombreado dinámico según el plano activo.
+   Las caras perpendiculares al plano se ven más oscuras,
+   las paralelas se ven más claras. */
+function getCubeFaces(mode) {
+    /* 6 caras base: cara1 (axis=0 más oscuro), cara2 (axis=0 oscuro),
+       cara3 (axis=1 medio-oscuro), cara4 (axis=1 medio),
+       cara5 (axis=2 claro), cara6 (axis=2 más claro) */
+    var shadeMap = {
+        /* Plano XY: perp = Z → caras Z más oscuras, luego Y, luego X */
+        xy: {
+            '0,0,0': 0.12,  /* z=0 inferior — más oscuro */
+            '1,0,0': 0.18,  /* z=a superior — oscuro */
+            '0,1,0': 0.24,  /* y=a trasera — medio-oscuro */
+            '1,1,0': 0.30,  /* y=0 frontal — medio */
+            '0,0,1': 0.36,  /* x=0 izquierda — claro */
+            '1,0,1': 0.42   /* x=a derecha — más claro */
+        },
+        /* Plano XZ: perp = Y → caras Y más oscuras, luego Z, luego X */
+        xz: {
+            '0,0,0': 0.12,  /* y=0 frontal — más oscuro */
+            '1,0,0': 0.18,  /* y=a trasera — oscuro */
+            '0,1,0': 0.24,  /* z=0 inferior — medio-oscuro */
+            '1,1,0': 0.30,  /* z=a superior — medio */
+            '0,0,1': 0.36,  /* x=0 izquierda — claro */
+            '1,0,1': 0.42   /* x=a derecha — más claro */
+        },
+        /* Plano YZ: perp = X → caras X más oscuras, luego Z, luego Y */
+        yz: {
+            '0,0,0': 0.12,  /* x=0 izquierda — más oscuro */
+            '1,0,0': 0.18,  /* x=a derecha — oscuro */
+            '0,0,1': 0.24,  /* z=0 inferior — medio-oscuro */
+            '1,1,0': 0.30,  /* z=a superior — medio */
+            '0,1,0': 0.36,  /* y=0 frontal — claro */
+            '1,1,1': 0.42   /* y=a trasera — más claro */
+        }
+    };
+
+    var shades = shadeMap[mode];
+
+    return [
+        { verts: [[0,0,0],[1,0,0],[1,1,0],[0,1,0]], shade: shades['0,0,0'] },
+        { verts: [[1,0,0],[1,1,0],[1,1,1],[1,0,1]], shade: shades['1,0,0'] },
+        { verts: [[0,1,0],[1,1,0],[1,1,1],[0,1,1]], shade: shades['0,1,0'] },
+        { verts: [[0,0,0],[0,1,0],[0,1,1],[0,0,1]], shade: shades['0,0,1'] },
+        { verts: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], shade: shades['1,1,0'] },
+        { verts: [[0,0,1],[1,0,1],[1,1,1],[0,1,1]], shade: shades['1,0,1'] }
+    ];
+}
+
+function coordToScreen(c, s, cx, cy) {
+    var pr = iso(c[0] * s, c[1] * s, c[2] * s);
+    return { x: cx + pr.x, y: cy + pr.y };
+}
+
+function coordLabel(c) {
+    return '(' + (c[0] === 0 ? '0' : 'a') + ',' + (c[1] === 0 ? '0' : 'a') + ',' + (c[2] === 0 ? '0' : 'a') + ')';
+}
+
+function drawCube() {
+    var p = planos[currentMode];
+    var s = Math.min(sec.ow, sec.oh) * 0.30;
+    var cx = sec.ox + sec.ow / 2;
+    var cy = sec.oy + sec.oh * 0.54;
+    var rgb = hexToRgb(p.planeColor);
+
+    /* 1. Las 6 caras sombreadas según el plano activo */
+    var faces = getCubeFaces(currentMode);
+    faces.forEach(function(face) {
+        ctx.beginPath();
+        var sp = coordToScreen(face.verts[0], s, cx, cy);
+        ctx.moveTo(sp.x, sp.y);
+        for (var i = 1; i < face.verts.length; i++) {
+            sp = coordToScreen(face.verts[i], s, cx, cy);
+            ctx.lineTo(sp.x, sp.y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + face.shade + ')';
+        ctx.fill();
+    });
+
+    /* 2. Fantasma: aristas que no son del plano actual */
+    ctx.strokeStyle = 'rgba(0,0,0,0.04)';
+    ctx.lineWidth = 0.7;
+    ctx.lineCap = 'round';
+    ctx.setLineDash([]);
+    allCubeEdges.forEach(function(e) {
+        var isInPlane = false;
+        var edges = cubeEdges[currentMode].visible.concat(cubeEdges[currentMode].hidden);
+        for (var k = 0; k < edges.length; k++) {
+            var ed = edges[k];
+            if ((e[0] === ed.from[0] && e[1] === ed.from[1] && e[2] === ed.from[2] &&
+                 e[3] === ed.to[0] && e[4] === ed.to[1] && e[5] === ed.to[2]) ||
+                (e[0] === ed.to[0] && e[1] === ed.to[1] && e[2] === ed.to[2] &&
+                 e[3] === ed.from[0] && e[4] === ed.from[1] && e[5] === ed.from[2])) {
+                isInPlane = true;
+                break;
+            }
+        }
+        if (isInPlane) return;
+        var from = coordToScreen([e[0], e[1], e[2]], s, cx, cy);
+        var to = coordToScreen([e[3], e[4], e[5]], s, cx, cy);
+        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+    });
+
+    /* 3. Aristas ocultas (punteadas) */
+    cubeEdges[currentMode].hidden.forEach(function(edge) {
+        var from = coordToScreen(edge.from, s, cx, cy);
+        var to = coordToScreen(edge.to, s, cx, cy);
+        ctx.strokeStyle = hexToRgba(p.planeColor, 0.6);
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.setLineDash([8, 5]);
+        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    /* 4. Aristas visibles (sólidas) */
+    cubeEdges[currentMode].visible.forEach(function(edge) {
+        var from = coordToScreen(edge.from, s, cx, cy);
+        var to = coordToScreen(edge.to, s, cx, cy);
+        ctx.strokeStyle = p.planeColor;
+        ctx.lineWidth = 3.2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+    });
+
+    /* 5. Vértices */
+    var usedVerts = {};
+    var vertList = [];
+    cubeEdges[currentMode].visible.forEach(function(edge) {
+        var fk = edge.from.join(','), tk = edge.to.join(',');
+        if (!usedVerts[fk]) { usedVerts[fk] = true; vertList.push(edge.from); }
+        if (!usedVerts[tk]) { usedVerts[tk] = true; vertList.push(edge.to); }
+    });
+    cubeEdges[currentMode].hidden.forEach(function(edge) {
+        var fk = edge.from.join(','), tk = edge.to.join(',');
+        if (!usedVerts[fk]) { usedVerts[fk] = true; vertList.push(edge.from); }
+        if (!usedVerts[tk]) { usedVerts[tk] = true; vertList.push(edge.to); }
+    });
+
+    var avgX = 0, avgY = 0;
+    vertList.forEach(function(c) {
+        var sp = coordToScreen(c, s, cx, cy);
+        avgX += sp.x; avgY += sp.y;
+    });
+    avgX /= vertList.length;
+    avgY /= vertList.length;
+
+    vertList.forEach(function(c) {
+        var sp = coordToScreen(c, s, cx, cy);
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        ctx.beginPath(); ctx.arc(sp.x + 1, sp.y + 1, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = p.planeColor;
+        ctx.beginPath(); ctx.arc(sp.x, sp.y, 4.5, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#FFFBF5'; ctx.lineWidth = 1.5; ctx.stroke();
+
+        var dx = sp.x - avgX, dy = sp.y - avgY;
+        var len = Math.sqrt(dx * dx + dy * dy);
+        var dist = 26;
+        var lx, ly;
+        if (len > 0.5) { lx = sp.x + (dx / len) * dist; ly = sp.y + (dy / len) * dist; }
+        else { lx = sp.x; ly = sp.y - dist; }
+        ctx.font = '400 9px "Source Sans 3"';
+        ctx.textAlign = dx > 1 ? 'left' : dx < -1 ? 'right' : 'center';
+        ctx.textBaseline = dy > 1 ? 'top' : dy < -1 ? 'bottom' : 'middle';
+        ctx.fillStyle = hexToRgba(p.planeColor, 0.7);
+        ctx.fillText(coordLabel(c), lx, ly);
+    });
+
+    /* 6. Triedro pequeño */
+    var axLen = s * 0.28;
+    [{ e: iso(axLen,0,0), k: 'x' }, { e: iso(0,axLen,0), k: 'y' }, { e: iso(0,0,axLen), k: 'z' }].forEach(function(a) {
+        var inP = currentMode.indexOf(a.k) !== -1;
+        var col = inP ? AX[a.k].color : hexToRgba(AX[a.k].color, 0.2);
+        ctx.strokeStyle = col; ctx.lineWidth = inP ? 1.8 : 0.8;
+        ctx.lineCap = 'round'; ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + a.e.x, cy + a.e.y); ctx.stroke();
+        drawArrow(cx + a.e.x, cy + a.e.y, Math.atan2(a.e.y, a.e.x), col, inP ? 6 : 4);
+        ctx.font = (inP ? '700' : '400') + ' 10px "Source Sans 3"';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = col;
+        ctx.fillText(AX[a.k].label, cx + a.e.x * 1.4, cy + a.e.y * 1.4);
+    });
+    ctx.fillStyle = '#1C1917';
+    ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2); ctx.fill();
+
+    /* 7. Leyenda */
+    var by = sec.oy + sec.oh - 30;
+    var bcx = sec.ox + sec.ow / 2;
+    ctx.strokeStyle = p.planeColor; ctx.lineWidth = 3.2; ctx.lineCap = 'round'; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(bcx - 90, by); ctx.lineTo(bcx - 60, by); ctx.stroke();
+    ctx.font = '400 8px "Source Sans 3"'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillText('Visible', bcx - 55, by);
+    ctx.strokeStyle = hexToRgba(p.planeColor, 0.6); ctx.lineWidth = 2.5; ctx.setLineDash([8, 5]);
+    ctx.beginPath(); ctx.moveTo(bcx + 5, by); ctx.lineTo(bcx + 35, by); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillText('Oculta', bcx + 40, by);
+    ctx.font = '600 9px "Source Sans 3"'; ctx.textAlign = 'center';
+    ctx.fillStyle = hexToRgba(p.planeColor, 0.5);
+    ctx.fillText(AX[p.perpAxis].label + ' = 0 en todos los puntos', bcx, by + 15);
+}
+
+function drawSection() { drawSectionChrome(planos[currentMode].label); drawTriedro(); }
+function drawCubeSection() { drawSectionChrome('Cubo — ' + planos[currentMode].label); drawCube(); }
+
+document.querySelectorAll('.tab').forEach(function(tb) {
+    tb.addEventListener('click', function() {
+        var m = tb.dataset.mode;
+        if (m === currentMode) return;
+        currentMode = m;
+        resetSec();
+        document.querySelectorAll('.tab').forEach(function(x) { x.classList.remove('on'); });
+        tb.classList.add('on');
+        updateInfo();
+    });
+});
+
+document.getElementById('btnToggle').addEventListener('click', function() {
+    showLayers = !showLayers;
+    this.classList.toggle('on', showLayers);
+    updateInfo();
+});
+
+function getPos(e) {
+    var r = canvas.getBoundingClientRect();
+    var s = e.touches ? e.touches[0] : e;
+    return { x: s.clientX - r.left, y: s.clientY - r.top };
+}
+canvas.addEventListener('mousedown', function(e) {
+    var p = getPos(e);
+    if (p.x >= sec.ox && p.x <= sec.ox + sec.ow && p.y >= sec.oy && p.y <= sec.oy + sec.oh) {
+        dragView = true; dragOff = { x: p.x - sec.ox, y: p.y - sec.oy };
+    }
+});
+canvas.addEventListener('mousemove', function(e) { if (!dragView) return; var p = getPos(e); sec.ox = p.x - dragOff.x; sec.oy = p.y - dragOff.y; });
+canvas.addEventListener('mouseup', function() { dragView = null; });
+canvas.addEventListener('mouseleave', function() { dragView = null; });
+canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault(); var p = getPos(e);
+    if (p.x >= sec.ox && p.x <= sec.ox + sec.ow && p.y >= sec.oy && p.y <= sec.oy + sec.oh) {
+        dragView = true; dragOff = { x: p.x - sec.ox, y: p.y - sec.oy };
+    }
+}, { passive: false });
+canvas.addEventListener('touchmove', function(e) {
+    if (!dragView) return; e.preventDefault(); var p = getPos(e); sec.ox = p.x - dragOff.x; sec.oy = p.y - dragOff.y;
+}, { passive: false });
+canvas.addEventListener('touchend', function() { dragView = null; }, { passive: false });
+
+function loop() {
+    ctx.clearRect(0, 0, w, h);
+    drawPaper();
+    if (showLayers) { drawSection(); } else { drawCubeSection(); }
+    requestAnimationFrame(loop);
+}
+
+setup();
+updateInfo();
+requestAnimationFrame(loop);
+window.addEventListener('resize', function() { setup(); });
+</script>
+</body>
+</html>
