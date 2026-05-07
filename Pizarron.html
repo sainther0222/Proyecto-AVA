@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pizarrón de Práctica — Isométrico</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #FFFDF9;
+            --fg: #1F2937;
+            --muted: #6B7280;
+            --accent: #E06140;
+            --card: #FFFFFF;
+            --border: #E5E7EB;
+            --surface: #F3F4F6;
+        }
+
+        html, body {
+            margin: 0; padding: 0; height: 100%; width: 100%;
+            font-family: 'Source Sans 3', sans-serif;
+            background: var(--bg); color: var(--fg);
+            overflow: hidden; touch-action: none;
+        }
+
+        .layout { display: flex; flex-direction: column; height: 100%; width: 100%; }
+
+        /* Toolbar */
+        .toolbar {
+            background: var(--card); border-bottom: 1.5px solid var(--border);
+            padding: 8px 12px; display: flex; gap: 10px; align-items: center;
+            overflow-x: auto; flex-shrink: 0; z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+        }
+
+        .group { display: flex; align-items: center; gap: 8px; padding-right: 12px; border-right: 1.5px solid var(--border); }
+        .group:last-child { border: none; }
+
+        .btn {
+            height: 34px; padding: 0 12px; border-radius: 10px;
+            border: 1.5px solid var(--border); background: var(--card);
+            font-size: 0.75rem; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .btn:hover { border-color: var(--accent); color: var(--accent); }
+        .btn.on { background: var(--accent); border-color: var(--accent); color: white; }
+        
+        .swatch {
+            width: 24px; height: 24px; border-radius: 50%;
+            border: 2px solid white; box-shadow: 0 0 0 1.5px var(--border);
+            cursor: pointer; transition: transform 0.2s;
+        }
+        .swatch.on { transform: scale(1.2); box-shadow: 0 0 0 1.5px var(--accent); }
+
+        /* Viewport */
+        .viewport { flex: 1; position: relative; background: var(--surface); overflow: hidden; }
+        canvas { position: absolute; inset: 0; }
+        #bgC { z-index: 1; }
+        #drC { z-index: 5; }
+        #prC { z-index: 6; pointer-events: none; }
+        
+        /* Tools Layer */
+        #tLayer { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+        .pt { position: absolute; pointer-events: auto; cursor: grab; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.1)); }
+        .pt.dragging { cursor: grabbing; z-index: 100; }
+        .pt.pen-on { pointer-events: none; }
+
+        .lock-btn {
+            position: absolute; top: -12px; left: -12px;
+            width: 28px; height: 28px; border-radius: 50%;
+            background: white; border: 1.5px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            pointer-events: auto;
+        }
+        .lock-btn.on { background: var(--accent); border-color: var(--accent); color: white; }
+
+        /* Help & Footer */
+        .help-btn {
+            position: absolute; bottom: 20px; right: 20px;
+            width: 48px; height: 48px; border-radius: 50%;
+            background: var(--accent); color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; cursor: pointer; z-index: 2000;
+            box-shadow: 0 10px 25px rgba(224,97,64,0.3); border: 4px solid white;
+        }
+        .footer { padding: 8px 16px; background: var(--card); border-top: 1.5px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .f-info { font-size: 0.65rem; color: var(--muted); font-weight: 600; }
+
+        /* Modal */
+        #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 3000; }
+        .modal-body { background: white; width: 90%; max-width: 340px; border-radius: 24px; padding: 30px; }
+        .modal-body h3 { font-family: 'Playfair Display', serif; margin: 0 0 15px; }
+        .modal-body p { font-size: 0.85rem; line-height: 1.6; color: var(--muted); margin-bottom: 20px; }
+        .modal-btn { width: 100%; background: var(--fg); color: white; border: none; padding: 12px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="layout">
+    <div class="toolbar">
+        <div class="group">
+            <button class="btn" id="btnPen" onclick="togPen()"><i class="fa-solid fa-pencil"></i> Lápiz</button>
+        </div>
+        <div class="group">
+            <div class="swatch on" style="background:#1F2937" onclick="setColor('#1F2937',this)"></div>
+            <div class="swatch"    style="background:#E06140" onclick="setColor('#E06140',this)"></div>
+            <div class="swatch"    style="background:#3B82F6" onclick="setColor('#3B82F6',this)"></div>
+        </div>
+        <div class="group">
+            <button class="btn" id="btnRT" onclick="togTool('RT')"><i class="fa-solid fa-ruler"></i> Regla T</button>
+            <button class="btn" id="btnE45" onclick="togTool('E45')"><i class="fa-solid fa-triangle-exclamation"></i> Esc. 45°</button>
+            <button class="btn" id="btnE30" onclick="togTool('E30')"><i class="fa-solid fa-pen-ruler"></i> Esc. 30/60°</button>
+        </div>
+        <div class="group">
+            <button class="btn" onclick="undo()"><i class="fa-solid fa-rotate-left"></i></button>
+            <button class="btn" onclick="clearAll()" style="color:var(--accent)"><i class="fa-solid fa-trash"></i></button>
+        </div>
+    </div>
+
+    <div class="viewport" id="vp">
+        <canvas id="bgC"></canvas>
+        <canvas id="drC"></canvas>
+        <canvas id="prC"></canvas>
+        <div id="tLayer"></div>
+        <div class="help-btn" onclick="showHelp()"><i class="fa-solid fa-question"></i></div>
+    </div>
+
+    <div class="footer">
+        <span class="f-info" id="status">Modo: Manipulación</span>
+        <span class="f-info">AVA Técnica — Pizarrón</span>
+    </div>
+</div>
+
+<div id="modal" onclick="hideHelp()">
+    <div class="modal-body" onclick="event.stopPropagation()">
+        <h3>Cómo trabajar</h3>
+        <p>1. <b>Herramientas:</b> Actívalas y muévelas.<br>
+           2. <b>Fijar:</b> Usa el candado para bloquear una herramienta. Solo así el lápiz se imantará a ella.<br>
+           3. <b>Dibujo:</b> Activa el Lápiz. Los trazos ahora serán perfectos siguiendo los bordes de tus reglas fijadas.</p>
+        <button class="modal-btn" onclick="hideHelp()">ENTENDIDO</button>
+    </div>
+</div>
+
+<script>
+    const vp=document.getElementById('vp'), bgC=document.getElementById('bgC'), drC=document.getElementById('drC'), prC=document.getElementById('prC'), tLayer=document.getElementById('tLayer');
+    const bgX=bgC.getContext('2d'), drX=drC.getContext('2d'), prX=prC.getContext('2d');
+    let W, H, dpr;
+
+    const TOOLS = {
+        RT:  { vis:false, locked:false, x:20, y:150, w:400, h:32, cab:28 },
+        E45: { vis:false, locked:false, x:120, y:60, s:160 },
+        E30: { vis:false, locked:false, x:250, y:60, w:180, h:104 }
+    };
+    let drag=null, pen={on:false, drawing:false, start:null, color:'#1F2937', history:[]};
+
+    function setup() {
+        dpr = window.devicePixelRatio || 1;
+        const r = vp.getBoundingClientRect(); W = r.width; H = r.height;
+        [bgC, drC, prC].forEach(c => {
+            c.width = W * dpr; c.height = H * dpr;
+            c.style.width = W+'px'; c.style.height = H+'px';
+            c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+        });
+        drawGrid(); redraw();
+    }
+
+    function drawGrid() {
+        bgX.clearRect(0,0,W,H); bgX.strokeStyle = 'rgba(0,0,0,0.04)'; bgX.lineWidth = 1;
+        for(let x=0; x<=W; x+=20) { bgX.beginPath(); bgX.moveTo(x,0); bgX.lineTo(x,H); bgX.stroke(); }
+        for(let y=0; y<=H; y+=20) { bgX.beginPath(); bgX.moveTo(0,y); bgX.lineTo(W,y); bgX.stroke(); }
+    }
+
+    function createPT(key) {
+        const div = document.createElement('div'); div.className = 'pt'; div.id = 'pt_'+key;
+        if(pen.on) div.classList.add('pen-on');
+        let svg = '';
+        if(key==='RT') svg = `<svg width="${TOOLS.RT.w}" height="${TOOLS.RT.h}"><rect width="${TOOLS.RT.cab}" height="${TOOLS.RT.h}" rx="4" fill="#374151"/><rect x="${TOOLS.RT.cab}" width="${TOOLS.RT.w-TOOLS.RT.cab}" height="${TOOLS.RT.h}" rx="2" fill="rgba(31,41,55,0.08)" stroke="#374151" stroke-width="1.5"/></svg>`;
+        else if(key==='E45') svg = `<svg width="${TOOLS.E45.s}" height="${TOOLS.E45.s}"><path d="M0,${TOOLS.E45.s} L${TOOLS.E45.s},${TOOLS.E45.s} L0,0 Z" fill="rgba(224,97,64,0.08)" stroke="#E06140" stroke-width="2" stroke-linejoin="round"/></svg>`;
+        else if(key==='E30') svg = `<svg width="${TOOLS.E30.w}" height="${TOOLS.E30.h}"><path d="M0,${TOOLS.E30.h} L${TOOLS.E30.w},${TOOLS.E30.h} L0,0 Z" fill="rgba(59,130,246,0.08)" stroke="#3B82F6" stroke-width="2" stroke-linejoin="round"/></svg>`;
+        div.innerHTML = svg;
+        
+        const lb = document.createElement('div'); lb.className = 'lock-btn'; lb.innerHTML = '<i class="fa-solid fa-unlock"></i>';
+        lb.onclick = (e) => {
+            e.stopPropagation(); TOOLS[key].locked = !TOOLS[key].locked;
+            lb.classList.toggle('on', TOOLS[key].locked);
+            lb.innerHTML = TOOLS[key].locked ? '<i class="fa-solid fa-lock"></i>' : '<i class="fa-solid fa-unlock"></i>';
+        };
+        div.appendChild(lb);
+        div.style.left = TOOLS[key].x+'px'; div.style.top = TOOLS[key].y+'px';
+        
+        const start = (ex, ey) => {
+            if(TOOLS[key].locked || pen.on) return;
+            const r = vp.getBoundingClientRect();
+            // FIX: Use current page offsets to prevent jumping
+            drag = { key, ox: TOOLS[key].x, oy: TOOLS[key].y, mx: ex - r.left, my: ey - r.top };
+            div.classList.add('dragging');
+        };
+        div.onmousedown = e => start(e.clientX, e.clientY);
+        div.ontouchstart = e => { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); };
+        return div;
+    }
+
+    function togTool(key) {
+        const t = TOOLS[key];
+        if(t.vis) { t.el.remove(); t.el=null; t.vis=false; }
+        else { t.vis=true; t.el=createPT(key); tLayer.appendChild(t.el); }
+        document.getElementById('btn'+key).classList.toggle('on', t.vis);
+    }
+
+    function togPen() {
+        pen.on = !pen.on;
+        document.getElementById('btnPen').classList.toggle('on', pen.on);
+        document.querySelectorAll('.pt').forEach(el => el.classList.toggle('pen-on', pen.on));
+        updateStatus();
+    }
+    function updateStatus() { document.getElementById('status').textContent = `Modo: ${pen.on ? 'Dibujo' : 'Manipulación'}`; }
+    function setColor(c, el) { pen.color = c; document.querySelectorAll('.swatch').forEach(s => s.classList.remove('on')); el.classList.add('on'); }
+
+    function getSnap(x, y) {
+        let best = { x, y, dist: 25 };
+        for(const k in TOOLS) {
+            const t = TOOLS[k]; if(!t.vis || !t.locked) continue;
+            if(k==='RT') {
+                const dy = Math.abs(y - t.y); if(dy < best.dist) best = { x, y: t.y, dist: dy };
+                const db = Math.abs(y - (t.y + t.h)); if(db < best.dist) best = { x, y: t.y + t.h, dist: db };
+            } else if(k==='E45') {
+                const db = Math.abs(y - (t.y + t.s)); if(db < best.dist) best = { x, y: t.y + t.s, dist: db };
+                const dl = Math.abs(x - t.x); if(dl < best.dist) best = { x: t.x, y, dist: dl };
+                const dHyp = Math.abs(y - t.y - (t.s - (x - t.x))) / Math.SQRT2;
+                if(dHyp < best.dist) { let d=x-t.x; best = { x: t.x+d, y: t.y+(t.s-d), dist: dHyp }; }
+            } else if(k==='E30') {
+                const db = Math.abs(y - (t.y + t.h)); if(db < best.dist) best = { x, y: t.y + t.h, dist: db };
+                const dl = Math.abs(x - t.x); if(dl < best.dist) best = { x: t.x, y, dist: dl };
+                const m = -t.h/t.w; const dHyp = Math.abs(y - (t.y + t.h + m*(x - t.x))) / Math.sqrt(1+m*m);
+                if(dHyp < best.dist) { let dx=x-t.x; best = { x: t.x+dx, y: t.y+t.h+m*dx, dist: dHyp }; }
+            }
+        }
+        return best.dist < 25 ? { x: best.x, y: best.y } : { x, y };
+    }
+
+    const getP = e => { const r = vp.getBoundingClientRect(); const s = e.touches?e.touches[0]:e; return { x: s.clientX-r.left, y: s.clientY-r.top }; };
+
+    function redraw() {
+        drX.clearRect(0,0,W,H);
+        pen.history.forEach(s => {
+            drX.strokeStyle = s.color; drX.lineWidth = 2.5; drX.lineCap = 'round';
+            drX.beginPath(); drX.moveTo(s.x1, s.y1); drX.lineTo(s.x2, s.y2); drX.stroke();
+        });
+    }
+
+    const startDraw = e => { if(!pen.on) return; pen.drawing = true; pen.start = getSnap(getP(e).x, getP(e).y); };
+    const moveAny = e => {
+        const r = vp.getBoundingClientRect();
+        const ex = e.touches ? e.touches[0].clientX : e.clientX;
+        const ey = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        if(drag) {
+            const t = TOOLS[drag.key];
+            t.x = drag.ox + (ex - r.left - drag.mx);
+            t.y = drag.oy + (ey - r.top - drag.my);
+            t.el.style.left = t.x+'px'; t.el.style.top = t.y+'px';
+            return;
+        }
+        if(!pen.drawing) return;
+        const p = getSnap(getP(e).x, getP(e).y);
+        prX.clearRect(0,0,W,H); prX.strokeStyle = pen.color; prX.lineWidth = 2.5; prX.lineCap = 'round';
+        prX.beginPath(); prX.moveTo(pen.start.x, pen.start.y); prX.lineTo(p.x, p.y); prX.stroke();
+    };
+    const endAny = e => {
+        if(drag) drag=null;
+        if(!pen.drawing) return; pen.drawing = false;
+        const p = getSnap(getP(e).x, getP(e).y);
+        pen.history.push({ x1: pen.start.x, y1: pen.start.y, x2: p.x, y2: p.y, color: pen.color });
+        prX.clearRect(0,0,W,H); redraw();
+    };
+
+    drC.onmousedown = startDraw; window.onmousemove = moveAny; window.onmouseup = endAny;
+    drC.ontouchstart = e => { startDraw(e); }; window.ontouchmove = moveAny; window.ontouchend = endAny;
+
+    function undo() { pen.history.pop(); redraw(); }
+    function clearAll() { pen.history = []; redraw(); }
+    function showHelp() { document.getElementById('modal').style.display = 'flex'; }
+    function hideHelp() { document.getElementById('modal').style.display = 'none'; }
+
+    window.onresize = setup; setup();
+</script>
+</body>
+</html>
